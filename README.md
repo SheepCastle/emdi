@@ -1,4 +1,4 @@
-# 엠디 (emdi) v2.5.0
+# 엠디 (emdi) v2.5.1
 
 **엠디 (emdi)** is an ultra-lightweight (~7 MB), native macOS Markdown & vault editor built with Swift (AppKit + `WKWebView`) and TipTap.
 

@@ -2,6 +2,16 @@
 
 엠디(emdi)의 모든 주요 변경 이력을 Semantic Versioning 규칙에 따라 기록합니다.
 
+## [2.5.1] - 2026-11-23
+
+### Changed
+- **표준 에디터 테마 6종 전면 개편**: 검증된 공식 팔레트(Catppuccin Mocha, Tokyo Night, Nord, Gruvbox Dark, GitHub Light, Catppuccin Latte)로 교체하고, 하드코딩되어 있던 헤딩·링크·인라인 코드·테이블·구문 강조·팝업 메뉴 색상을 모두 시맨틱 CSS 변수로 통일했습니다.
+- **새 앱 아이콘(로고) 리디자인**: 깊은 미드나이트 스퀴클 위에 입체 종이접기(Origami Ribbon) `M` 모노그램과 마크다운 다이아몬드 포인트를 적용했습니다.
+
+### Added
+- **초기 실행 폴더/파일 열기 UX 개선**: 열린 폴더가 없을 때 사이드바에 `폴더 열기` / `파일 열기` 버튼을 표시하고, `파일 > 폴더 열기... (Cmd + Option + O)` 메뉴·커맨드 팔레트·폴더 드래그 열기 및 빈 에디터 1줄 플레이스홀더를 추가했습니다.
+- **터미널 1줄 설치 스크립트 (`scripts/install-release.sh`)**: `curl -fsSL ... | bash` 한 줄로 최신 macOS 릴리즈를 브라우저 quarantine 경고 없이 `/Applications/엠디.app`에 바로 설치할 수 있습니다.
+
 ## [2.5.0] - 2026-11-23
 
 ### Added
