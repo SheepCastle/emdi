@@ -171,8 +171,22 @@ try {
   applyThemeAndNotify('lavender', 'auto', false);
 }
 
+const isMacPlatform = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+document.documentElement.dataset.platform = isMacPlatform ? 'macos' : 'windows';
+
 function postNative(payload: Record<string, unknown>) {
-  window.webkit?.messageHandlers?.emdi?.postMessage(payload);
+  if (window.webkit?.messageHandlers?.emdi) {
+    window.webkit.messageHandlers.emdi.postMessage(payload);
+    return;
+  }
+  const tauri = (window as unknown as {
+    __TAURI_INTERNALS__?: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> };
+  }).__TAURI_INTERNALS__;
+  if (tauri?.invoke) {
+    tauri.invoke('emdi_message', { payload }).catch((err) => {
+      console.error('[emdi] native invoke error:', err);
+    });
+  }
 }
 
 function getActiveTab(): TabDocState | null {
@@ -1837,6 +1851,13 @@ const commandPalette = new CommandPaletteController({
       run: () => settingsModal.open('appearance'),
     },
     {
+      id: 'open-shortcuts',
+      title: '키보드 단축키 안내 보기',
+      category: '앱',
+      keywords: ['shortcut', 'hotkey', 'keymap', 'help', '단축키', '키보드', '도움말'],
+      run: () => settingsModal.open('shortcuts'),
+    },
+    {
       id: 'open-release-notes',
       title: '릴리즈 노트 및 변경 이력 보기',
       category: '앱',
@@ -2007,8 +2028,9 @@ richEditorEl.addEventListener('click', (event) => {
     return;
   }
 
+  const modPressed = isMacPlatform ? event.metaKey : event.ctrlKey;
   const wikiEl = target.closest('[data-wikilink="true"]') as HTMLElement | null;
-  if (wikiEl && event.metaKey) {
+  if (wikiEl && modPressed) {
     event.preventDefault();
     event.stopPropagation();
     const rawTarget = wikiEl.getAttribute('data-wiki-target') ?? '';
@@ -2021,7 +2043,7 @@ richEditorEl.addEventListener('click', (event) => {
   }
 
   const anchor = target.closest('a') as HTMLAnchorElement | null;
-  if (anchor && event.metaKey) {
+  if (anchor && modPressed) {
     const href = anchor.getAttribute('href')?.trim() ?? '';
     if (!href) return;
     event.preventDefault();
@@ -2253,7 +2275,7 @@ window.addEventListener(
 );
 
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Meta') {
+  if ((isMacPlatform && event.key === 'Meta') || (!isMacPlatform && event.key === 'Control')) {
     document.body.classList.add('meta-pressed');
   }
 
@@ -2325,7 +2347,52 @@ window.addEventListener('keydown', (event) => {
     }
   }
 
-  if (!event.metaKey || event.ctrlKey) return;
+  const isMod = isMacPlatform ? (event.metaKey && !event.ctrlKey) : (event.ctrlKey && !event.metaKey);
+  if (!isMod) return;
+
+  if (!isMacPlatform) {
+    const winKey = event.key.toLowerCase();
+    if (winKey === 'o' && event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      postNative({ type: 'openFolder' });
+      return;
+    }
+    if (winKey === 'o' && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      postNative({ type: 'openFile' });
+      return;
+    }
+    if (winKey === 't' && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      postNative({ type: 'newTab' });
+      return;
+    }
+    if (winKey === 't' && event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      postNative({ type: 'reopenClosedTab' });
+      return;
+    }
+    if (winKey === 'w' && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      if (activeTabId) postNative({ type: 'closeTab', tabId: activeTabId });
+      return;
+    }
+    if (winKey === 'r' && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      postNative({ type: 'refreshAll' });
+      return;
+    }
+    if (winKey === ',' && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      settingsModal.open('appearance');
+      return;
+    }
+    if (winKey === 'p' && !event.shiftKey && !event.altKey) {
+      event.preventDefault();
+      window.print();
+      return;
+    }
+  }
 
   if (event.altKey && !event.shiftKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
     event.preventDefault();
@@ -2478,7 +2545,7 @@ window.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('keyup', (event) => {
-  if (event.key === 'Meta') {
+  if ((isMacPlatform && event.key === 'Meta') || (!isMacPlatform && event.key === 'Control')) {
     document.body.classList.remove('meta-pressed');
   }
 });

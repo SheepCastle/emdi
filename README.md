@@ -1,4 +1,4 @@
-# 엠디 (emdi) v2.5.1
+# 엠디 (emdi) v2.6.0
 
 **엠디 (emdi)** is an ultra-lightweight (~7 MB), native macOS Markdown & vault editor built with Swift (AppKit + `WKWebView`) and TipTap.
 
@@ -30,11 +30,11 @@ Modern Markdown editors and PKM tools often bundle an entire Chromium browser an
 
 ---
 
-## Installation (macOS 13+)
+## Installation
 
-### Quick Install (Recommended)
+### macOS (13+, Apple Silicon & Intel)
 
-Paste and run this single command in Terminal. It downloads the latest Universal binary (Apple Silicon & Intel) directly into `/Applications/엠디.app` without browser quarantine prompts:
+Paste and run this single command in Terminal:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SheepCastle/emdi/main/scripts/install-release.sh | bash
@@ -42,8 +42,18 @@ curl -fsSL https://raw.githubusercontent.com/SheepCastle/emdi/main/scripts/insta
 
 Launch **엠디** from Applications, Spotlight, or Raycast. Future updates can be installed directly inside the app via the update banner or `엠디 > 업데이트 확인...`.
 
+### Windows (10 / 11, x64)
+
+Paste and run this single command in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/SheepCastle/emdi/main/scripts/install-release.ps1 | iex
+```
+
+It downloads the lightweight native WebView2 binary (`emdi.exe`) into `%LocalAppData%\Programs\emdi\`, adds a Start Menu shortcut, and registers `.md` / `.markdown` file associations without requiring administrator privileges.
+
 <details>
-<summary>Alternative: Build from Source</summary>
+<summary>Alternative: Build from Source (macOS)</summary>
 
 Requirements: macOS 13+, Xcode Command Line Tools (`swiftc`), Node.js / npm.
 

@@ -31,9 +31,9 @@ esac
 
 printf '%s\n' "$NEXT" > "$VERSION_FILE"
 
-python3 - "$INFO_PLIST" "$PKG_JSON" "$README_FILE" "$NEXT" <<'PY'
-import json, plistlib, re, sys
-info_path, pkg_path, readme_path, next_ver = sys.argv[1:5]
+python3 - "$INFO_PLIST" "$PKG_JSON" "$README_FILE" "$ROOT/windows/Cargo.toml" "$ROOT/windows/tauri.conf.json" "$NEXT" <<'PY'
+import json, os, plistlib, re, sys
+info_path, pkg_path, readme_path, cargo_path, tauri_path, next_ver = sys.argv[1:7]
 
 with open(info_path, "rb") as f:
     plist = plistlib.load(f)
@@ -55,6 +55,21 @@ with open(readme_path, "r", encoding="utf-8") as f:
 readme = re.sub(r"^# 엠디 \(emdi\) v[0-9]+\.[0-9]+\.[0-9]+", f"# 엠디 (emdi) v{next_ver}", readme, count=1, flags=re.M)
 with open(readme_path, "w", encoding="utf-8") as f:
     f.write(readme)
+
+if os.path.exists(cargo_path):
+    with open(cargo_path, "r", encoding="utf-8") as f:
+        cargo = f.read()
+    cargo = re.sub(r'^version = "[0-9]+\.[0-9]+\.[0-9]+"', f'version = "{next_ver}"', cargo, count=1, flags=re.M)
+    with open(cargo_path, "w", encoding="utf-8") as f:
+        f.write(cargo)
+
+if os.path.exists(tauri_path):
+    with open(tauri_path, "r", encoding="utf-8") as f:
+        tauri_cfg = json.load(f)
+    tauri_cfg["version"] = next_ver
+    with open(tauri_path, "w", encoding="utf-8") as f:
+        json.dump(tauri_cfg, f, ensure_ascii=False, indent=2)
+        f.write("\n")
 
 print(f"Bumped version -> v{next_ver} (build {cur_build + 1})")
 PY

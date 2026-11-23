@@ -76,9 +76,12 @@ export class SettingsModalController {
   private readonly backdrop = document.getElementById('settings-backdrop') as HTMLDivElement;
   private readonly closeBtn = document.getElementById('btn-settings-close') as HTMLButtonElement;
   private readonly tabAppearance = document.getElementById('settings-tab-appearance') as HTMLButtonElement;
+  private readonly tabShortcuts = document.getElementById('settings-tab-shortcuts') as HTMLButtonElement;
   private readonly tabReleases = document.getElementById('settings-tab-releases') as HTMLButtonElement;
   private readonly paneAppearance = document.getElementById('settings-pane-appearance') as HTMLDivElement;
+  private readonly paneShortcuts = document.getElementById('settings-pane-shortcuts') as HTMLDivElement;
   private readonly paneReleases = document.getElementById('settings-pane-releases') as HTMLDivElement;
+  private readonly shortcutsBody = document.getElementById('settings-shortcuts-body') as HTMLDivElement;
 
   private readonly themeGrid = document.getElementById('settings-theme-grid') as HTMLDivElement;
   private readonly accentRow = document.getElementById('settings-accent-row') as HTMLDivElement;
@@ -97,13 +100,14 @@ export class SettingsModalController {
   private readonly btnRnGithub = document.getElementById('btn-rn-github') as HTMLButtonElement;
   private readonly rnBody = document.getElementById('rn-changelog-body') as HTMLDivElement;
 
-  private activeTab: 'appearance' | 'releases' = 'appearance';
+  private activeTab: 'appearance' | 'shortcuts' | 'releases' = 'appearance';
   private bundledChangelog = '';
 
   constructor(opts: SettingsModalOptions) {
     this.opts = opts;
     this.buildThemeCards();
     this.buildAccentSwatches();
+    this.buildShortcutsGuide();
     this.bindEvents();
   }
 
@@ -118,7 +122,7 @@ export class SettingsModalController {
     }
   }
 
-  open(initialTab: 'appearance' | 'releases' = 'appearance') {
+  open(initialTab: 'appearance' | 'shortcuts' | 'releases' = 'appearance') {
     this.activeTab = initialTab;
     this.backdrop.classList.remove('hidden');
     this.syncUI();
@@ -132,8 +136,10 @@ export class SettingsModalController {
   syncUI() {
     const s = this.opts.getSettings();
     this.tabAppearance.classList.toggle('active', this.activeTab === 'appearance');
+    this.tabShortcuts.classList.toggle('active', this.activeTab === 'shortcuts');
     this.tabReleases.classList.toggle('active', this.activeTab === 'releases');
     this.paneAppearance.classList.toggle('hidden', this.activeTab !== 'appearance');
+    this.paneShortcuts.classList.toggle('hidden', this.activeTab !== 'shortcuts');
     this.paneReleases.classList.toggle('hidden', this.activeTab !== 'releases');
 
     const activeThemeId = resolveThemeId(s.themeId);
@@ -243,6 +249,87 @@ export class SettingsModalController {
     }
   }
 
+  private buildShortcutsGuide() {
+    const isMac = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+    const mod = isMac ? '⌘' : 'Ctrl+';
+    const alt = isMac ? '⌥' : 'Alt+';
+    const shift = isMac ? '⇧' : 'Shift+';
+
+    const groups: { title: string; items: [string, string][] }[] = [
+      {
+        title: '파일 및 탐색',
+        items: [
+          ['파일 열기', `${mod}O`],
+          ['폴더 열기', `${mod}${alt}O`],
+          ['빠른 파일 열기', `${mod}K`],
+          ['커맨드 팔레트', `${mod}${shift}P`],
+          ['저장 / 다른 이름으로 저장', `${mod}S / ${mod}${shift}S`],
+          ['새로고침', `${mod}R`],
+          ['설정 및 테마', `${mod},`],
+        ],
+      },
+      {
+        title: '화면 및 레이아웃',
+        items: [
+          ['좌측 사이드바 토글', `${mod}B / ${mod}\\`],
+          ['파일 탐색기 / 문서 목차', `${mod}E / ${mod}${shift}O`],
+          ['현재 파일 위치 보기', `${mod}${shift}L`],
+          ['집중 모드 (사이드바 숨김)', `${mod}${shift}F`],
+          ['원문 마크다운 / 미리보기 전환', `${mod}/`],
+          ['글자 확대 / 축소 / 초기화', `${mod}+ / ${mod}- / ${mod}0`],
+        ],
+      },
+      {
+        title: '탭 및 이동',
+        items: [
+          ['새 탭 / 탭 닫기', `${mod}T / ${mod}W`],
+          ['닫은 탭 다시 열기', `${mod}${shift}T`],
+          ['탭 번호로 바로 이동', `${mod}1~9`],
+          ['탭 히스토리 뒤로 / 앞으로', `${mod}[ / ${mod}]`],
+          ['링크 · 위키링크 열기', `${isMac ? '⌘' : 'Ctrl'}+클릭`],
+        ],
+      },
+      {
+        title: '주기 노트 (Obsidian 연동)',
+        items: [
+          ['오늘 일간 / 주간 / 월간 / 연간 노트', `${alt}1 / 2 / 3 / 4`],
+          ['이전 / 다음 주기 노트 이동', `${mod}${alt}← / →`],
+        ],
+      },
+      {
+        title: '편집 및 찾기',
+        items: [
+          ['슬래시 블록 메뉴', '빈 줄에서 /'],
+          ['찾기 / 찾기 및 바꾸기', `${mod}F / ${mod}${alt}F`],
+          ['체크박스 토글', `${mod}Enter`],
+          ['줄 · 목록 위/아래 이동', `${alt}↑ / ↓`],
+          ['굵게 / 형광펜 / 링크 삽입', `${mod}${shift}B / H / K`],
+          ['PDF 내보내기 / 인쇄', `${mod}${shift}E / ${mod}P`],
+        ],
+      },
+    ];
+
+    this.shortcutsBody.innerHTML = groups
+      .map(
+        (g) => `
+        <div class="shortcut-group">
+          <div class="shortcut-group-title">${escapeHtml(g.title)}</div>
+          <div class="shortcut-list">
+            ${g.items
+              .map(
+                ([label, keys]) => `
+                <div class="shortcut-row">
+                  <span class="shortcut-label">${escapeHtml(label)}</span>
+                  <kbd class="shortcut-kbd">${escapeHtml(keys)}</kbd>
+                </div>`
+              )
+              .join('')}
+          </div>
+        </div>`
+      )
+      .join('');
+  }
+
   private bindEvents() {
     this.backdrop.addEventListener('click', (event) => {
       if (event.target === this.backdrop) this.close();
@@ -250,6 +337,10 @@ export class SettingsModalController {
     this.closeBtn.addEventListener('click', () => this.close());
     this.tabAppearance.addEventListener('click', () => {
       this.activeTab = 'appearance';
+      this.syncUI();
+    });
+    this.tabShortcuts.addEventListener('click', () => {
+      this.activeTab = 'shortcuts';
       this.syncUI();
     });
     this.tabReleases.addEventListener('click', () => {

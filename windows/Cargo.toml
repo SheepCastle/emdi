@@ -1,0 +1,30 @@
+[package]
+name = "emdi-windows"
+version = "2.6.0"
+description = "엠디 (emdi) — Lightweight native Markdown & vault editor for Windows"
+authors = ["Sean Lim"]
+license = "MIT"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rfd = "0.15"
+open = "5"
+arboard = "3"
+base64 = "0.22"
+chrono = "0.4"
+urlencoding = "2"
+ureq = { version = "2", features = ["json"] }
+dirs = "5"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

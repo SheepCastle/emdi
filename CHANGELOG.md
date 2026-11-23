@@ -2,6 +2,13 @@
 
 엠디(emdi)의 모든 주요 변경 이력을 Semantic Versioning 규칙에 따라 기록합니다.
 
+## [2.6.0] - 2026-11-23
+
+### Added
+- **Windows 네이티브 지원 (WebView2 + Rust/Tauri v2)**: `windows/` 네이티브 쉘, GitHub Actions 자동 빌드(`.github/workflows/release-windows.yml`), PowerShell 1줄 설치 스크립트(`scripts/install-release.ps1`)를 추가했습니다.
+- **설정 모달 내 `단축키` 안내 탭 (`Cmd/Ctrl + ,`)**: OS에 맞춰 macOS(`⌘/⌥/⇧`)와 Windows(`Ctrl/Alt/Shift`) 단축키를 카테고리별로 바로 확인할 수 있습니다.
+- **크로스플랫폼 단축키 및 UI 대응**: Windows 환경에서 `Ctrl` 기반 단축키, `Ctrl+클릭` 링크 열기, 타이틀바 좌측 여백 자동 조정을 지원합니다.
+
 ## [2.5.1] - 2026-11-23
 
 ### Changed

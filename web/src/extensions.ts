@@ -87,7 +87,12 @@ export function toViewImageSrc(rawSrc: string | null | undefined): string {
   if (isExternalOrDataSrc(src)) return src;
   const { tabId, nonce } = imageContextProvider();
   const tabQuery = tabId ? `&tabId=${encodeURIComponent(tabId)}` : '';
-  return `emdi-local://file?path=${encodeURIComponent(src)}${tabQuery}&v=${nonce}`;
+  const isWindowsTauri =
+    typeof window !== 'undefined' &&
+    Boolean((window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) &&
+    /Win/i.test(navigator.platform || navigator.userAgent);
+  const schemePrefix = isWindowsTauri ? 'http://emdi-local.localhost/file' : 'emdi-local://file';
+  return `${schemePrefix}?path=${encodeURIComponent(src)}${tabQuery}&v=${nonce}`;
 }
 
 function escapeMarkdownAlt(alt: string): string {

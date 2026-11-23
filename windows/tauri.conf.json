@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "emdi",
+  "version": "2.6.0",
+  "identifier": "com.sheepcastle.emdi",
+  "build": {
+    "frontendDist": "../web/dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "엠디",
+        "width": 1220,
+        "height": 820,
+        "minWidth": 720,
+        "minHeight": 500,
+        "resizable": true,
+        "decorations": true,
+        "backgroundColor": "#1e1e2e"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.png"
+    ]
+  }
+}

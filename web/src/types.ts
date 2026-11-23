@@ -118,7 +118,7 @@ export interface EmdiWindowAPI {
   toggleFocusMode: () => void;
   openQuickOpen: () => void;
   openCommandPalette: () => void;
-  openSettings: (payload?: { tab?: 'appearance' | 'releases' }) => void;
+  openSettings: (payload?: { tab?: 'appearance' | 'shortcuts' | 'releases' }) => void;
   applySettings: (payload: Partial<AppSettingsPayload>) => void;
   setChangelog: (payload: { markdown: string }) => void;
   toggleWidthMode: () => void;
