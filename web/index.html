@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>엠디</title>
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <!-- 좌측 풀하이트 Paseo 스타일 사이드바 -->
+      <aside id="sidebar-panel" class="sidebar-panel">
+        <div class="sidebar-header" id="sidebar-header">
+          <div class="sidebar-seg" role="tablist">
+            <button id="sidebar-tab-folder" class="sidebar-seg-btn active" type="button" title="파일 탐색기 (⌘E)">파일</button>
+            <button id="sidebar-tab-outline" class="sidebar-seg-btn" type="button" title="문서 목차 (⌘⇧O)">목차</button>
+          </div>
+          <button id="btn-sidebar-collapse" class="icon-btn sm" type="button" title="사이드바 접기 (⌘B)">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.35" />
+              <path d="M6 2.5v11" stroke="currentColor" stroke-width="1.35" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- 파일트리 뷰 -->
+        <div id="folder-view" class="sidebar-view">
+          <div class="tree-root-bar">
+            <span id="tree-root-name" class="tree-root-name" title="">열린 폴더 없음</span>
+            <div class="tree-root-actions">
+              <button id="btn-tree-md-only" class="tree-mode-pill" type="button" title="전체 파일 보기 / 마크다운(.md)만 보기 전환">전체</button>
+              <button id="btn-tree-up" class="tree-mini-btn" type="button" title="상위 폴더로 이동" disabled>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 12.5V4M4.5 7.2L8 3.7l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button id="btn-tree-vault" class="tree-mini-btn hidden" type="button" title="볼트 루트로 이동">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M2.5 7.5L8 3l5.5 4.5M4 6.8V13h8V6.8" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button id="btn-tree-reveal-active" class="tree-mini-btn" type="button" title="현재 파일 위치로 이동 (⌘⇧L)">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.35" />
+                  <path d="M8 2.2v2M8 11.8v2M2.2 8h2M11.8 8h2" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" />
+                </svg>
+              </button>
+              <button id="btn-tree-refresh" class="tree-mini-btn" type="button" title="새로고침 (⌘R)">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M12.8 8a4.8 4.8 0 1 1-1.2-3.2M12.8 3.2v2.4h-2.4" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="tree-filter-wrap">
+            <svg class="tree-filter-icon" width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.4" />
+              <path d="M10.5 10.5L13.5 13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+            <input id="tree-filter-input" class="tree-filter-input" type="text" placeholder="파일 필터..." spellcheck="false" />
+            <button id="btn-tree-filter-clear" class="tree-filter-clear hidden" type="button" title="지우기">×</button>
+          </div>
+
+          <div id="file-tree-list" class="file-tree-list" role="tree"></div>
+        </div>
+
+        <!-- 목차 뷰 -->
+        <div id="outline-view" class="sidebar-view hidden">
+          <nav id="outline-list" class="outline-list"></nav>
+        </div>
+      </aside>
+
+      <!-- Paseo 스타일 드래그 리사이즈 핸들 -->
+      <div id="sidebar-resizer" class="sidebar-resizer" title="드래그하여 사이드바 너비 조절"></div>
+
+      <!-- 우측 메인 컬럼 -->
+      <div class="main-column">
+        <!-- 단일 행 40px Paseo 스타일 통합 탭바 -->
+        <header class="tabbar" id="tabbar">
+          <div class="tabbar-left-slot" id="tabbar-left-slot">
+            <button id="btn-sidebar-open" class="icon-btn sm" type="button" title="사이드바 열기 (⌘B)">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.35" />
+                <path d="M6 2.5v11" stroke="currentColor" stroke-width="1.35" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="tab-strip" id="tab-strip" role="tablist"></div>
+
+          <button id="btn-new-tab" class="tab-add-btn" type="button" title="새 탭 (⌘T)">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <path d="M8 3.2v9.6M3.2 8h9.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+          </button>
+
+          <div class="tabbar-drag-spacer" id="tabbar-drag-spacer"></div>
+
+          <div class="tabbar-actions">
+            <button id="btn-open-default" class="icon-btn sm hidden" type="button" title="기본 앱으로 열기">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M6.8 3.2H3.8A1.3 1.3 0 0 0 2.5 4.5v7.7a1.3 1.3 0 0 0 1.3 1.3h7.7a1.3 1.3 0 0 0 1.3-1.3v-3M9.2 2.5h4.3v4.3M7.5 8.5l5.8-5.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+            <button id="btn-quick-open" class="icon-btn sm" type="button" title="빠른 파일 열기 (⌘K)">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M2.5 5.2h11M2.5 8h7.5M2.5 10.8h5" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" />
+                <circle cx="11.5" cy="10.5" r="2.1" stroke="currentColor" stroke-width="1.3" />
+                <path d="M13.1 12.1L14.3 13.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button id="btn-find" class="icon-btn sm" type="button" title="찾기 및 바꾸기 (⌘F)">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <circle cx="7.2" cy="7.2" r="4.4" stroke="currentColor" stroke-width="1.35" />
+                <path d="M10.7 10.7L13.6 13.6" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button id="btn-width" class="icon-btn sm" type="button" title="본문 폭 전환 (반응형 / 집중 760px)">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M2.5 3.5v9M13.5 3.5v9M5.5 8h5M7 6.2L5.2 8 7 9.8M9 6.2L10.8 8 9 9.8" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+            <span class="tabbar-sep" id="tabbar-action-sep"></span>
+            <button id="btn-mode" class="pill-btn" type="button" title="원문 / 미리보기 전환 (⌘/)">원문</button>
+            <button id="btn-save" class="pill-btn accent" type="button" title="저장 (⌘S)">저장</button>
+          </div>
+        </header>
+
+        <!-- 외부 파일 변경 충돌 배너 -->
+        <div id="external-banner" class="external-banner hidden" role="status" aria-live="polite">
+          <div class="external-banner-text">
+            <span class="external-banner-dot"></span>
+            <span>외부에서 파일이 수정되었습니다</span>
+          </div>
+          <div class="external-banner-actions">
+            <button id="btn-external-reload" class="banner-btn primary" type="button">최신 내용 불러오기</button>
+            <button id="btn-external-keep" class="banner-btn" type="button">내 편집 유지</button>
+          </div>
+        </div>
+
+        <!-- 앱 업데이트 안내 배너 (Paseo 스타일) -->
+        <div id="update-banner" class="update-banner hidden" role="status" aria-live="polite">
+          <div class="update-banner-text">
+            <span class="update-banner-dot"></span>
+            <span id="update-banner-label">새 버전을 사용할 수 있습니다</span>
+          </div>
+          <div class="update-banner-actions">
+            <button id="btn-update-install" class="banner-btn accent" type="button">지금 업데이트</button>
+            <button id="btn-update-notes" class="banner-btn" type="button">릴리즈 노트</button>
+            <button id="btn-update-dismiss" class="banner-btn subtle" type="button">나중에</button>
+          </div>
+        </div>
+
+        <!-- 1) 마크다운 / 원문 / 코드 텍스트 스크롤 영역 -->
+        <main class="editor-scroll" id="editor-scroll">
+          <div class="document-container">
+            <section id="frontmatter-card" class="frontmatter-card hidden">
+              <button id="frontmatter-toggle" class="frontmatter-toggle" type="button">
+                <span class="fm-chevron">▸</span>
+                <span class="fm-label">문서 속성</span>
+                <span id="fm-preview" class="fm-preview"></span>
+              </button>
+              <div id="frontmatter-body" class="frontmatter-body hidden">
+                <textarea id="frontmatter-textarea" spellcheck="false"></textarea>
+              </div>
+            </section>
+
+            <div id="rich-editor" class="rich-editor"></div>
+            <div id="code-preview" class="code-preview hidden"></div>
+            <textarea id="source-editor" class="source-editor hidden" spellcheck="false"></textarea>
+          </div>
+        </main>
+
+        <!-- 2) HTML 라이브 프리뷰 스테이지 -->
+        <div id="html-stage" class="frame-stage hidden">
+          <iframe
+            id="html-preview-frame"
+            class="preview-iframe"
+            title="HTML 미리보기"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          ></iframe>
+        </div>
+
+        <!-- 3) PDF 네이티브 뷰어 스테이지 -->
+        <div id="pdf-stage" class="frame-stage hidden">
+          <iframe id="pdf-preview-frame" class="preview-iframe pdf-frame" title="PDF 미리보기"></iframe>
+        </div>
+
+        <!-- 4) 이미지 전용 뷰어 스테이지 -->
+        <div id="image-stage" class="image-stage hidden">
+          <div class="image-stage-bar">
+            <span id="image-stage-meta" class="image-stage-meta"></span>
+            <div class="image-stage-controls">
+              <button id="btn-img-zoom-out" class="pill-btn" type="button">−</button>
+              <span id="image-zoom-label" class="image-zoom-label">맞춤</span>
+              <button id="btn-img-zoom-in" class="pill-btn" type="button">+</button>
+              <button id="btn-img-fit" class="pill-btn" type="button">화면에 맞춤</button>
+            </div>
+          </div>
+          <div id="image-stage-canvas" class="image-stage-canvas">
+            <img id="image-tab-preview" class="image-tab-preview" alt="" />
+          </div>
+        </div>
+
+        <!-- 하단 초슬림 상태바 -->
+        <footer class="statusbar" id="statusbar">
+          <div class="statusbar-left">
+            <div class="nav-group">
+              <button id="btn-nav-back" class="status-nav-btn" type="button" title="뒤로 (⌘[)" disabled>‹</button>
+              <button id="btn-nav-forward" class="status-nav-btn" type="button" title="앞으로 (⌘])" disabled>›</button>
+            </div>
+            <button id="file-breadcrumb" class="file-breadcrumb" type="button" title="클릭하여 파일 경로 복사">
+              제목 없음.md
+            </button>
+            <span id="status-toast" class="status-toast"></span>
+          </div>
+          <div class="statusbar-right">
+            <button id="btn-update-pill" class="status-update-pill hidden" type="button" title="새 버전으로 업데이트">↑ 업데이트</button>
+            <button id="btn-version-check" class="status-version-btn" type="button" title="클릭하여 업데이트 확인">v2.4.0</button>
+            <span class="status-dot-sep">·</span>
+            <button id="btn-autosave" class="status-toggle-btn" type="button" title="자동 저장 켜기/끄기">자동저장</button>
+            <span class="status-dot-sep">·</span>
+            <span id="doc-stats" class="doc-stats" title="문서 정보">0자</span>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <!-- 플로팅 찾기 및 바꾸기 바 -->
+    <div id="find-bar" class="find-bar hidden" role="search">
+      <div class="find-row">
+        <button id="btn-find-toggle-replace" class="find-icon-btn" type="button" title="바꾸기 펼치기">▸</button>
+        <input id="find-input" class="find-input" type="text" placeholder="문서에서 찾기..." spellcheck="false" />
+        <button id="btn-find-case" class="find-toggle-btn" type="button" title="대소문자 구분">Aa</button>
+        <span id="find-count" class="find-count">0/0</span>
+        <button id="btn-find-prev" class="find-icon-btn" type="button" title="이전 (Shift+Enter)">↑</button>
+        <button id="btn-find-next" class="find-icon-btn" type="button" title="다음 (Enter)">↓</button>
+        <button id="btn-find-close" class="find-icon-btn" type="button" title="닫기 (Esc)">×</button>
+      </div>
+      <div id="replace-row" class="find-row replace-row hidden">
+        <span class="find-spacer"></span>
+        <input id="replace-input" class="find-input" type="text" placeholder="바꿀 내용..." spellcheck="false" />
+        <button id="btn-replace-one" class="find-action-btn" type="button">바꾸기</button>
+        <button id="btn-replace-all" class="find-action-btn primary" type="button">모두</button>
+      </div>
+    </div>
+
+    <!-- 빠른 파일 열기 모달 (Cmd+K, Paseo Command Center 스타일) -->
+    <div id="quick-open-backdrop" class="quick-open-backdrop hidden">
+      <div class="quick-open-modal" role="dialog" aria-modal="true" aria-label="빠른 파일 열기">
+        <div class="quick-open-input-wrap">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="7.2" cy="7.2" r="4.5" stroke="currentColor" stroke-width="1.4" />
+            <path d="M10.7 10.7L13.8 13.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
+          <input id="quick-open-input" class="quick-open-input" type="text" placeholder="파일 이름 또는 경로 검색 (모든 형식)..." spellcheck="false" />
+          <kbd class="quick-open-kbd">ESC</kbd>
+        </div>
+        <div id="quick-open-list" class="quick-open-list"></div>
+      </div>
+    </div>
+
+    <!-- 통합 커맨드 팔레트 (Cmd+Shift+P) -->
+    <div id="cmd-palette-backdrop" class="quick-open-backdrop hidden">
+      <div class="quick-open-modal cmd-palette-modal" role="dialog" aria-modal="true" aria-label="커맨드 팔레트">
+        <div class="quick-open-input-wrap">
+          <span class="cmd-palette-prompt">&gt;</span>
+          <input id="cmd-palette-input" class="quick-open-input" type="text" placeholder="명령어 또는 단축키 검색..." spellcheck="false" />
+          <kbd class="quick-open-kbd">ESC</kbd>
+        </div>
+        <div id="cmd-palette-list" class="quick-open-list cmd-palette-list"></div>
+      </div>
+    </div>
+
+    <!-- 설정 및 릴리즈 노트 모달 (Cmd+,) -->
+    <div id="settings-backdrop" class="quick-open-backdrop settings-backdrop hidden">
+      <div class="settings-modal" role="dialog" aria-modal="true" aria-label="엠디 설정">
+        <div class="settings-header">
+          <div class="settings-tabs" role="tablist">
+            <button id="settings-tab-appearance" class="settings-tab-btn active" type="button">외관 및 설정</button>
+            <button id="settings-tab-releases" class="settings-tab-btn" type="button">릴리즈 노트</button>
+          </div>
+          <button id="btn-settings-close" class="icon-btn sm" type="button" title="닫기 (ESC)">×</button>
+        </div>
+
+        <div id="settings-pane-appearance" class="settings-body">
+          <div class="settings-section">
+            <div class="settings-section-title">색상 테마</div>
+            <div id="settings-theme-grid" class="theme-grid"></div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-section-title">포인트 컬러</div>
+            <div id="settings-accent-row" class="accent-row"></div>
+          </div>
+
+          <div class="settings-section settings-rows">
+            <label class="settings-row">
+              <span class="settings-row-meta">
+                <span class="settings-row-title">본문 글자 크기</span>
+                <span class="settings-row-desc">단축키 ⌘= / ⌘- / ⌘0으로 즉시 조절 가능</span>
+              </span>
+              <span class="settings-range-wrap">
+                <input id="settings-font-range" type="range" min="12" max="24" step="0.5" value="15.5" />
+                <span id="settings-font-val" class="settings-range-val">15.5px</span>
+              </span>
+            </label>
+
+            <label class="settings-row">
+              <span class="settings-row-meta">
+                <span class="settings-row-title">읽기 집중 폭 (760px)</span>
+                <span class="settings-row-desc">끄면 화면에 맞춰 최대 1080px 반응형 폭 사용</span>
+              </span>
+              <input id="settings-width-toggle" class="settings-switch" type="checkbox" />
+            </label>
+
+            <label class="settings-row">
+              <span class="settings-row-meta">
+                <span class="settings-row-title">자동 저장</span>
+                <span class="settings-row-desc">편집 멈춤 1.5초 후 저장된 파일 자동 반영</span>
+              </span>
+              <input id="settings-autosave-toggle" class="settings-switch" type="checkbox" />
+            </label>
+
+            <div class="settings-row">
+              <span class="settings-row-meta">
+                <span class="settings-row-title">기본 볼트 폴더 (주기 노트 ⌥1~4)</span>
+                <span id="settings-vault-path" class="settings-row-desc settings-vault-path">자동 탐지</span>
+              </span>
+              <span class="settings-vault-actions">
+                <button id="btn-settings-pick-vault" class="pill-btn" type="button">폴더 선택</button>
+                <button id="btn-settings-clear-vault" class="pill-btn hidden" type="button">초기화</button>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div id="settings-pane-releases" class="settings-body hidden">
+          <div class="rn-topbar">
+            <div class="rn-meta">
+              <span class="rn-app-name">엠디 (emdi)</span>
+              <span id="rn-version-badge" class="rn-ver-pill">v2.5.0</span>
+              <span id="rn-update-status" class="rn-status">최신 버전 사용 중</span>
+            </div>
+            <div class="rn-actions">
+              <button id="btn-rn-install" class="pill-btn accent hidden" type="button">지금 업데이트</button>
+              <button id="btn-rn-check" class="pill-btn" type="button">업데이트 확인</button>
+              <button id="btn-rn-github" class="pill-btn" type="button">GitHub</button>
+            </div>
+          </div>
+          <div id="rn-changelog-body" class="rn-changelog-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 플로팅 선택 서식 툴바 (Bubble Menu) -->
+    <div id="bubble-menu" class="bubble-menu hidden" role="toolbar">
+      <div id="bubble-buttons" class="bubble-buttons">
+        <button data-cmd="bold" class="bubble-btn" type="button" title="굵게 (⌘⇧B)"><b>B</b></button>
+        <button data-cmd="italic" class="bubble-btn" type="button" title="기울임 (⌘I)"><i>I</i></button>
+        <button data-cmd="strike" class="bubble-btn" type="button" title="취소선"><s>S</s></button>
+        <button data-cmd="code" class="bubble-btn mono" type="button" title="인라인 코드">&lt;/&gt;</button>
+        <button data-cmd="highlight" class="bubble-btn" type="button" title="하이라이트 (==강조==)">
+          <span class="hl-chip">H</span>
+        </button>
+        <span class="bubble-sep"></span>
+        <button data-cmd="h1" class="bubble-btn" type="button" title="제목 1">H1</button>
+        <button data-cmd="h2" class="bubble-btn" type="button" title="제목 2">H2</button>
+        <button data-cmd="h3" class="bubble-btn" type="button" title="제목 3">H3</button>
+        <span class="bubble-sep"></span>
+        <button data-cmd="link" class="bubble-btn" type="button" title="링크 삽입/편집">링크</button>
+      </div>
+      <div id="bubble-link-form" class="bubble-link-form hidden">
+        <input id="bubble-link-input" class="bubble-link-input" type="text" placeholder="URL 또는 파일 경로 입력..." spellcheck="false" />
+        <button id="bubble-link-apply" class="bubble-action-btn" type="button">적용</button>
+        <button id="bubble-link-remove" class="bubble-action-btn danger" type="button">해제</button>
+      </div>
+    </div>
+
+    <!-- 슬래시 커맨드 메뉴 -->
+    <div id="slash-menu" class="slash-menu hidden" role="listbox"></div>
+
+    <!-- 표 편집 플로팅 바 -->
+    <div id="table-toolbar" class="table-toolbar hidden" role="toolbar">
+      <button data-tcmd="addRowBefore" type="button" title="위에 행 추가">+위행</button>
+      <button data-tcmd="addRowAfter" type="button" title="아래에 행 추가">+아래행</button>
+      <button data-tcmd="addColBefore" type="button" title="왼쪽에 열 추가">+좌열</button>
+      <button data-tcmd="addColAfter" type="button" title="오른쪽에 열 추가">+우열</button>
+      <span class="bubble-sep"></span>
+      <button data-tcmd="delRow" type="button" title="현재 행 삭제">행삭제</button>
+      <button data-tcmd="delCol" type="button" title="현재 열 삭제">열삭제</button>
+      <button data-tcmd="delTable" class="danger" type="button" title="표 삭제">표삭제</button>
+    </div>
+
+    <!-- 탭 우클릭 컨텍스트 메뉴 -->
+    <div id="tab-context-menu" class="context-menu hidden" role="menu">
+      <button data-action="close" type="button">탭 닫기</button>
+      <button data-action="closeOthers" type="button">다른 탭 모두 닫기</button>
+      <button data-action="closeRight" type="button">오른쪽 탭 닫기</button>
+      <div class="context-sep"></div>
+      <button data-action="detach" type="button">새 창으로 분리</button>
+      <button data-action="openDefault" type="button">기본 앱으로 열기</button>
+      <button data-action="copyPath" type="button">파일 경로 복사</button>
+      <button data-action="reveal" type="button">Finder에서 보기</button>
+    </div>
+
+    <!-- 파일트리 우클릭 컨텍스트 메뉴 -->
+    <div id="tree-context-menu" class="context-menu hidden" role="menu">
+      <button data-tree-action="open" type="button">새 탭으로 열기</button>
+      <button data-tree-action="openDefault" type="button">기본 앱으로 열기</button>
+      <button data-tree-action="setRoot" type="button">이 폴더를 루트로 고정</button>
+      <div class="context-sep"></div>
+      <button data-tree-action="copyPath" type="button">경로 복사</button>
+      <button data-tree-action="reveal" type="button">Finder에서 보기</button>
+    </div>
+
+    <!-- 링크 호버 툴팁 -->
+    <div id="link-tooltip" class="link-tooltip hidden"></div>
+
+    <!-- 이미지 확대 라이트박스 -->
+    <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="이미지 확대 보기">
+      <button id="lightbox-close" class="lightbox-close" type="button" title="닫기 (ESC)">×</button>
+      <div class="lightbox-stage">
+        <img id="lightbox-img" class="lightbox-img" alt="" />
+        <div id="lightbox-caption" class="lightbox-caption"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
