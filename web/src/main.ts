@@ -142,12 +142,12 @@ let currentAccentId = 'auto';
 let defaultVaultPath = '';
 
 function applyThemeAndNotify(themeId: string, accentId: string, persist = true) {
-  currentThemeId = themeId;
-  currentAccentId = accentId;
   const palette = applyThemePalette(themeId, accentId);
+  currentThemeId = palette.id;
+  currentAccentId = accentId;
   setMermaidThemeMode(palette.mode === 'light');
   try {
-    window.localStorage.setItem('emdi:themeId', themeId);
+    window.localStorage.setItem('emdi:themeId', palette.id);
     window.localStorage.setItem('emdi:accentId', accentId);
   } catch {
     // Ignore
@@ -155,7 +155,7 @@ function applyThemeAndNotify(themeId: string, accentId: string, persist = true) 
   if (persist) {
     postNative({
       type: 'saveSettings',
-      themeId,
+      themeId: palette.id,
       accentId,
       themeMode: palette.mode,
       windowBgHex: palette.windowBgHex,
@@ -301,7 +301,7 @@ const editor: Editor = new Editor({
       },
     }),
     Placeholder.configure({
-      placeholder: '내용을 입력하세요... (빈 줄에서 / 로 블록 삽입)',
+      placeholder: '바로 작성을 시작하거나 파일을 열어보세요  ·  / 블록 삽입  ·  ⌘O 파일 열기  ·  ⌘⌥O 폴더 열기',
     }),
     Typography,
     Markdown.configure({
@@ -1764,6 +1764,22 @@ const commandPalette = new CommandPaletteController({
       run: () => postNative({ type: 'revealInFinder', tabId: activeTabId ?? '' }),
     },
     {
+      id: 'open-folder',
+      title: '폴더 열기...',
+      category: '파일',
+      shortcut: '⌘⌥O',
+      keywords: ['folder', 'vault', 'directory', 'open', '폴더', '볼트', '열기'],
+      run: () => postNative({ type: 'openFolder' }),
+    },
+    {
+      id: 'open-file',
+      title: '파일 열기...',
+      category: '파일',
+      shortcut: '⌘O',
+      keywords: ['file', 'open', '파일', '열기'],
+      run: () => postNative({ type: 'openFile' }),
+    },
+    {
       id: 'open-default-app',
       title: '기본 앱으로 열기',
       category: '파일',
@@ -2476,6 +2492,12 @@ window.addEventListener('blur', () => {
 
 window.__emdi = {
   openTab: openTabFromNative,
+  openFolder: ({ path }) => {
+    if (!path) return;
+    fileTree.setMode('folder');
+    fileTree.setSidebarOpen(true);
+    fileTree.setRoot(path);
+  },
   activateTab: ({ tabId, anchor }) => activateTabLocal(tabId, anchor, false),
   closeTab: closeTabFromNative,
   updateTabExternalContent,

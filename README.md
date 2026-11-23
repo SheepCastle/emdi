@@ -32,16 +32,19 @@ Modern Markdown editors and PKM tools often bundle an entire Chromium browser an
 
 ## Installation (macOS 13+)
 
-### Option 1: Download Prebuilt App (Recommended)
-1. Download the latest `emdi-vX.Y.Z-macos.zip` (Universal binary for Apple Silicon & Intel) from [**GitHub Releases**](https://github.com/SheepCastle/emdi/releases/latest).
-2. Unzip and drag **`엠디.app`** into `/Applications`.
-3. Because the app is ad-hoc signed (without a paid Apple Developer notarization certificate), remove the quarantine flag once on first install:
-   ```bash
-   xattr -dr com.apple.quarantine "/Applications/엠디.app"
-   ```
-4. Launch **엠디** from Applications, Spotlight, or Raycast. Future updates can be installed directly inside the app via the update banner or `엠디 > 업데이트 확인...`.
+### Quick Install (Recommended)
 
-### Option 2: Build from Source
+Paste and run this single command in Terminal. It downloads the latest Universal binary (Apple Silicon & Intel) directly into `/Applications/엠디.app` without browser quarantine prompts:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SheepCastle/emdi/main/scripts/install-release.sh | bash
+```
+
+Launch **엠디** from Applications, Spotlight, or Raycast. Future updates can be installed directly inside the app via the update banner or `엠디 > 업데이트 확인...`.
+
+<details>
+<summary>Alternative: Build from Source</summary>
+
 Requirements: macOS 13+, Xcode Command Line Tools (`swiftc`), Node.js / npm.
 
 ```bash
@@ -51,6 +54,8 @@ cd emdi
 ```
 
 `./install.sh` builds the app into `/Applications/엠디.app` and registers it as the default handler for `.md` / `.markdown` files.
+
+</details>
 
 ---
 

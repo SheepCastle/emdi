@@ -1,5 +1,5 @@
 import type { AppSettingsPayload, UpdateStatePayload } from '../types';
-import { ACCENT_PRESETS, THEME_PALETTES } from './themes';
+import { ACCENT_PRESETS, THEME_PALETTES, resolveThemeId } from './themes';
 
 export interface SettingsModalOptions {
   getSettings: () => AppSettingsPayload;
@@ -136,8 +136,9 @@ export class SettingsModalController {
     this.paneAppearance.classList.toggle('hidden', this.activeTab !== 'appearance');
     this.paneReleases.classList.toggle('hidden', this.activeTab !== 'releases');
 
+    const activeThemeId = resolveThemeId(s.themeId);
     this.themeGrid.querySelectorAll<HTMLButtonElement>('.theme-card').forEach((card) => {
-      card.classList.toggle('active', card.dataset.themeId === s.themeId);
+      card.classList.toggle('active', card.dataset.themeId === activeThemeId);
     });
     this.accentRow.querySelectorAll<HTMLButtonElement>('.accent-dot').forEach((dot) => {
       dot.classList.toggle('active', dot.dataset.accentId === s.accentId);

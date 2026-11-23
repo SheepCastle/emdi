@@ -329,7 +329,33 @@ export class FileTreeController {
     if (!this.rootPath) {
       const empty = document.createElement('div');
       empty.className = 'sidebar-empty';
-      empty.textContent = '파일을 열거나 저장하면 폴더 트리가 표시됩니다.';
+
+      const text = document.createElement('p');
+      text.className = 'sidebar-empty-text';
+      text.textContent = '열려 있는 폴더가 없습니다. 폴더나 파일을 열어 탐색기를 시작하세요.';
+      empty.appendChild(text);
+
+      const actions = document.createElement('div');
+      actions.className = 'sidebar-empty-actions';
+
+      const openFolderBtn = document.createElement('button');
+      openFolderBtn.type = 'button';
+      openFolderBtn.className = 'sidebar-empty-btn primary';
+      openFolderBtn.textContent = '폴더 열기';
+      openFolderBtn.title = '폴더 열기 (⌘⌥O)';
+      openFolderBtn.addEventListener('click', () => this.opts.postNative({ type: 'openFolder' }));
+
+      const openFileBtn = document.createElement('button');
+      openFileBtn.type = 'button';
+      openFileBtn.className = 'sidebar-empty-btn';
+      openFileBtn.textContent = '파일 열기';
+      openFileBtn.title = '파일 열기 (⌘O)';
+      openFileBtn.addEventListener('click', () => this.opts.postNative({ type: 'openFile' }));
+
+      actions.appendChild(openFolderBtn);
+      actions.appendChild(openFileBtn);
+      empty.appendChild(actions);
+
       this.listEl.appendChild(empty);
       return;
     }

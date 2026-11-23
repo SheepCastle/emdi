@@ -1435,6 +1435,12 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
         case "saveSettings":
             (NSApp.delegate as? AppDelegate)?.updateSettings(from: body)
 
+        case "openFolder":
+            (NSApp.delegate as? AppDelegate)?.openFolderAction()
+
+        case "openFile":
+            (NSApp.delegate as? AppDelegate)?.openDocumentAction()
+
         case "pickDefaultVault":
             (NSApp.delegate as? AppDelegate)?.pickDefaultVaultFolder(for: window)
 
@@ -1447,6 +1453,11 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
     }
 
     // MARK: - NSWindowDelegate
+
+    func openFolder(url: URL) {
+        let std = url.standardizedFileURL
+        callWebJS("openFolder", payload: ["path": std.path])
+    }
 
     func windowDidBecomeKey(_ notification: Notification) {
         startPollTimer()
@@ -1529,7 +1540,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let ud = UserDefaults.standard
         let fontSize = ud.object(forKey: fontSizeKey) as? Double ?? 15.5
         return [
-            "themeId": ud.string(forKey: themeIdKey) ?? "lavender",
+            "themeId": ud.string(forKey: themeIdKey) ?? "catppuccin-mocha",
             "accentId": ud.string(forKey: accentIdKey) ?? "auto",
             "fontSize": fontSize,
             "narrowWidth": ud.bool(forKey: narrowWidthKey),
@@ -1634,7 +1645,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ application: NSApplication, open urls: [URL]) {
         openedFileAtLaunch = true
         for url in urls {
-            openFileInExistingOrWindow(url: url, preferredWindow: activeController, anchor: nil)
+            var isDir: ObjCBool = false
+            if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
+                openFolderInExistingOrWindow(url: url, preferredWindow: activeController)
+            } else {
+                openFileInExistingOrWindow(url: url, preferredWindow: activeController, anchor: nil)
+            }
         }
     }
 
@@ -1675,6 +1691,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let controller = EditorWindowController(initialURLs: [url])
         registerAndShow(controller: controller)
+    }
+
+    func openFolderInExistingOrWindow(url: URL, preferredWindow: EditorWindowController?) {
+        if let targetWindow = preferredWindow ?? activeController ?? controllers.last {
+            targetWindow.openFolder(url: url)
+            targetWindow.showWindow(nil)
+            targetWindow.window?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        let controller = EditorWindowController(initialURLs: [nil])
+        registerAndShow(controller: controller)
+        controller.openFolder(url: url)
     }
 
     func openNewWindow(fileURL: URL?) {
@@ -1835,7 +1864,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func newWindowAction() { openNewWindow(fileURL: nil) }
 
-    @objc private func openDocumentAction() {
+    @objc func openDocumentAction() {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
@@ -1844,6 +1873,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             for url in panel.urls {
                 openFileInExistingOrWindow(url: url, preferredWindow: activeController, anchor: nil)
             }
+        }
+    }
+
+    @objc func openFolderAction() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.message = "탐색기에서 열 폴더를 선택하세요."
+        if panel.runModal() == .OK, let url = panel.url {
+            openFolderInExistingOrWindow(url: url, preferredWindow: activeController)
         }
     }
 
@@ -1950,6 +1990,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let newWin = fileMenu.addItem(withTitle: "새로운 창", action: #selector(newWindowAction), keyEquivalent: "N")
         newWin.keyEquivalentModifierMask = [.command, .shift]
         fileMenu.addItem(withTitle: "열기...", action: #selector(openDocumentAction), keyEquivalent: "o")
+        let openFolderItem = fileMenu.addItem(withTitle: "폴더 열기...", action: #selector(openFolderAction), keyEquivalent: "o")
+        openFolderItem.keyEquivalentModifierMask = [.command, .option]
         fileMenu.addItem(withTitle: "빠른 파일 열기...", action: #selector(quickOpenAction), keyEquivalent: "k")
 
         let recentItem = NSMenuItem(title: "최근 항목 열기", action: nil, keyEquivalent: "")

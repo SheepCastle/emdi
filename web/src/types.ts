@@ -105,6 +105,7 @@ export interface UpdateStatePayload {
 
 export interface EmdiWindowAPI {
   openTab: (payload: OpenTabPayload) => void;
+  openFolder: (payload: { path: string }) => void;
   activateTab: (payload: { tabId: string; anchor?: string }) => void;
   closeTab: (payload: { tabId: string; nextActiveTabId?: string }) => void;
   updateTabExternalContent: (payload: UpdateExternalPayload) => void;
