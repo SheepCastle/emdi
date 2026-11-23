@@ -36,6 +36,7 @@ import { FileTreeController } from './ui/file-tree';
 import { CommandPaletteController, type CommandItem } from './ui/command-palette';
 import { SettingsModalController } from './ui/settings-modal';
 import { InspectorController } from './ui/inspector';
+import { configureDataviewBridge, handleDataviewResult } from './ui/dataview';
 import { applyThemePalette } from './ui/themes';
 import { formatFileSize, getFileIconSVG } from './ui/file-icons';
 import { renderCodeOrDataPreview } from './ui/code-preview';
@@ -215,6 +216,12 @@ setExtensionProviders({
     postNative({ type: 'copyText', text });
     showToast('코드 복사됨', 1500);
   },
+  onOpenFilePath: (path: string) => postNative({ type: 'openFilePath', path }),
+});
+
+configureDataviewBridge({
+  postNative,
+  getActiveTabId: () => activeTabId ?? '',
 });
 
 const fileTree = new FileTreeController({
@@ -1998,12 +2005,26 @@ lightboxCloseBtn.addEventListener('click', (event) => {
 
 // ── Link Hover Tooltip & Cmd+Click Navigation ──
 
+const EXTERNAL_URL_RE = /^https?:\/\/[^\s<>()]+$/i;
+
+function getInlineCodeUrl(el: HTMLElement | null): { codeEl: HTMLElement; url: string } | null {
+  if (!el) return null;
+  const codeEl = el.closest('code') as HTMLElement | null;
+  if (!codeEl || codeEl.closest('pre')) return null;
+  const text = (codeEl.textContent ?? '').trim();
+  if (!EXTERNAL_URL_RE.test(text)) return null;
+  return { codeEl, url: text };
+}
+
 function hideLinkTooltip() {
   linkTooltipEl.classList.add('hidden');
 }
 
-function showLinkTooltip(text: string, anchorEl: HTMLElement) {
-  linkTooltipEl.textContent = `⌘+클릭으로 열기 · ${text}`;
+function showLinkTooltip(text: string, anchorEl: HTMLElement, isExternal = false) {
+  const modLabel = isMacPlatform ? '⌘+클릭' : 'Ctrl+클릭';
+  linkTooltipEl.textContent = isExternal
+    ? `클릭하여 브라우저로 열기 · ${text}`
+    : `${modLabel}으로 열기 · ${text}`;
   linkTooltipEl.classList.remove('hidden');
   const rect = anchorEl.getBoundingClientRect();
   const tipRect = linkTooltipEl.getBoundingClientRect();
@@ -2020,19 +2041,35 @@ richEditorEl.addEventListener('mouseover', (event) => {
   const wikiEl = target.closest('[data-wikilink="true"]') as HTMLElement | null;
   if (wikiEl) {
     const dest = wikiEl.getAttribute('data-wiki-target') ?? '';
-    if (dest) showLinkTooltip(dest, wikiEl);
+    if (dest) showLinkTooltip(dest, wikiEl, false);
     return;
   }
 
   const anchor = target.closest('a') as HTMLAnchorElement | null;
   if (anchor) {
-    const href = anchor.getAttribute('href') ?? '';
-    if (href) showLinkTooltip(href, anchor);
+    const href = (anchor.getAttribute('href') ?? '').trim();
+    if (href) {
+      const isExt = /^(https?:|mailto:)/i.test(href);
+      showLinkTooltip(href, anchor, isExt);
+    }
+    return;
+  }
+
+  const codeUrl = getInlineCodeUrl(target);
+  if (codeUrl) {
+    codeUrl.codeEl.classList.add('code-url-hover');
+    showLinkTooltip(codeUrl.url, codeUrl.codeEl, true);
   }
 });
 
 richEditorEl.addEventListener('mouseout', (event) => {
   const target = event.target as HTMLElement | null;
+  const codeUrl = getInlineCodeUrl(target);
+  if (codeUrl) {
+    codeUrl.codeEl.classList.remove('code-url-hover');
+    hideLinkTooltip();
+    return;
+  }
   if (target?.closest('[data-wikilink="true"], a')) {
     hideLinkTooltip();
   }
@@ -2053,6 +2090,8 @@ richEditorEl.addEventListener('click', (event) => {
   }
 
   const modPressed = isMacPlatform ? event.metaKey : event.ctrlKey;
+  const hasSelection = !(window.getSelection()?.isCollapsed ?? true);
+
   const wikiEl = target.closest('[data-wikilink="true"]') as HTMLElement | null;
   if (wikiEl && modPressed) {
     event.preventDefault();
@@ -2067,16 +2106,29 @@ richEditorEl.addEventListener('click', (event) => {
   }
 
   const anchor = target.closest('a') as HTMLAnchorElement | null;
-  if (anchor && modPressed) {
+  if (anchor) {
     const href = anchor.getAttribute('href')?.trim() ?? '';
     if (!href) return;
+    const isExt = /^(https?:|mailto:)/i.test(href);
+    if ((isExt && !event.altKey && !hasSelection) || modPressed) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (href.startsWith('#')) {
+        scrollToAnchor(decodeURIComponent(href.slice(1)));
+      } else if (isExt) {
+        postNative({ type: 'openExternal', url: href });
+      } else {
+        postNative({ type: 'openLink', target: href, isWiki: false, tabId: activeTabId ?? '' });
+      }
+    }
+    return;
+  }
+
+  const codeUrl = getInlineCodeUrl(target);
+  if (codeUrl && !event.altKey && (!hasSelection || modPressed)) {
     event.preventDefault();
     event.stopPropagation();
-    if (href.startsWith('#')) {
-      scrollToAnchor(decodeURIComponent(href.slice(1)));
-    } else {
-      postNative({ type: 'openLink', target: href, isWiki: false, tabId: activeTabId ?? '' });
-    }
+    postNative({ type: 'openExternal', url: codeUrl.url });
   }
 });
 
@@ -2704,6 +2756,7 @@ window.__emdi = {
   onTreeChildrenLoaded: (payload) => fileTree.onChildrenLoaded(payload),
   onTreeSearchResults: (payload) => fileTree.onSearchResults(payload),
   onBacklinksLoaded: (payload) => inspector.onBacklinksLoaded(payload),
+  onDataviewResult: (payload) => handleDataviewResult(payload),
   notifyExternalConflict: ({ tabId }) => {
     const tab = tabs.find((t) => t.id === tabId);
     if (!tab) return;

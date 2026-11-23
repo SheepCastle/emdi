@@ -90,6 +90,18 @@ export function preprocessMarkdownForEditor(markdown: string): string {
           return `<mark>${inner}</mark>`;
         });
 
+        // 4. CJK/Korean-friendly **bold** (fixes CommonMark flanking rule when punctuation meets Korean particles like **KDL(예시)**은)
+        out = out.replace(
+          /(?<![\\*])\*\*(?!\*)(?=\S)((?:(?!\*\*).)+?)(?<=\S)(?<![\\*])\*\*(?!\*)/g,
+          (_full, inner: string) => `<strong>${inner}</strong>`
+        );
+
+        // 5. CJK/Korean-friendly ~~strikethrough~~
+        out = out.replace(
+          /(?<![\\~])~~(?!~)(?=\S)((?:(?!~~).)+?)(?<=\S)(?<![\\~])~~(?!~)/g,
+          (_full, inner: string) => `<s>${inner}</s>`
+        );
+
         return out;
       })
       .join('');

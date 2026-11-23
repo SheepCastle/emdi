@@ -45,6 +45,21 @@ export interface BacklinksPayload {
   items: BacklinkItem[];
 }
 
+export interface DataviewNoteRecord {
+  name: string;
+  path: string;
+  folder: string;
+  ctime: string;
+  mtime: string;
+  props: Record<string, string | string[]>;
+}
+
+export interface DataviewResultPayload {
+  requestId: string;
+  items: DataviewNoteRecord[];
+  error?: string;
+}
+
 export interface TabDocState {
   id: string;
   fileName: string;
@@ -159,6 +174,7 @@ export interface EmdiWindowAPI {
   onTreeChildrenLoaded: (payload: TreeChildrenPayload) => void;
   onTreeSearchResults: (payload: TreeSearchPayload) => void;
   onBacklinksLoaded: (payload: BacklinksPayload) => void;
+  onDataviewResult: (payload: DataviewResultPayload) => void;
   notifyExternalConflict: (payload: { tabId: string; fileName: string; filePath: string }) => void;
   onImageSaved: (payload: { requestId: string; relativePath: string; alt?: string }) => void;
   onImageSaveError: (payload: { requestId: string; message?: string; silent?: boolean }) => void;

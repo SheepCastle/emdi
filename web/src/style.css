@@ -2863,6 +2863,12 @@ html[data-theme-mode='light'] .table-toolbar {
   border-bottom: 1px dashed var(--wikilink-border);
 }
 
+.ProseMirror a[href^="http://"],
+.ProseMirror a[href^="https://"],
+.ProseMirror a[href^="mailto:"] {
+  cursor: pointer;
+}
+
 body.meta-pressed .ProseMirror a,
 body.meta-pressed .ProseMirror .emdi-wikilink {
   cursor: pointer;
@@ -2895,17 +2901,22 @@ body.meta-pressed .ProseMirror .emdi-wikilink:hover {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  margin: 0.42em 0;
 }
 
 .ProseMirror ul[data-type='taskList'] li > label {
   flex: 0 0 auto;
-  margin-top: 4px;
+  height: 1.82em;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
   user-select: none;
 }
 
 .ProseMirror ul[data-type='taskList'] li > label input[type='checkbox'] {
   appearance: none;
   -webkit-appearance: none;
+  margin: 0;
   width: 16px;
   height: 16px;
   border-radius: 5px;
@@ -2943,7 +2954,18 @@ body.meta-pressed .ProseMirror .emdi-wikilink:hover {
   text-decoration-color: var(--border-strong);
 }
 
-.ProseMirror ul[data-type='taskList'] li > div { flex: 1; }
+.ProseMirror ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.ProseMirror ul[data-type='taskList'] li > div > p {
+  margin: 0;
+}
+
+.ProseMirror ul[data-type='taskList'] li > div > p + p {
+  margin-top: 0.45em;
+}
 
 /* Blockquote & Obsidian Callouts */
 .ProseMirror blockquote {
@@ -3008,6 +3030,12 @@ body.meta-pressed .ProseMirror .emdi-wikilink:hover {
   color: var(--code-inline-text);
   padding: 2px 6px;
   border-radius: 5px;
+}
+
+.ProseMirror code.code-url-hover {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Enhanced Code Block + Mermaid */
@@ -3120,6 +3148,117 @@ body.meta-pressed .ProseMirror .emdi-wikilink:hover {
 .hljs-meta { color: var(--hl-meta); }
 .hljs-addition { color: var(--hl-add); background: rgba(64, 160, 43, 0.14); }
 .hljs-deletion { color: var(--hl-del); background: rgba(210, 15, 57, 0.14); }
+
+/* Dataview Lightweight Table/List Preview */
+.emdi-dataview-preview {
+  background: var(--table-bg);
+}
+
+.emdi-dataview-preview.hidden {
+  display: none;
+}
+
+.emdi-dv-scroll {
+  overflow-x: auto;
+}
+
+.emdi-dv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  line-height: 1.55;
+}
+
+.emdi-dv-table th,
+.emdi-dv-table td {
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.emdi-dv-table th:last-child,
+.emdi-dv-table td:last-child {
+  border-right: none;
+}
+
+.emdi-dv-table tr:last-child td {
+  border-bottom: none;
+}
+
+.emdi-dv-table th {
+  background: var(--table-header-bg);
+  color: var(--table-header-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.emdi-dv-table tr:hover td {
+  background: var(--table-row-hover);
+}
+
+.emdi-dv-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--link);
+  font-family: var(--font-sans);
+  font-size: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid var(--link-underline);
+}
+
+.emdi-dv-link:hover {
+  color: var(--link-hover);
+  border-bottom-color: var(--accent);
+}
+
+.emdi-dv-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.emdi-dv-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.emdi-dv-list {
+  margin: 0;
+  padding: 12px 18px 12px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.92em;
+}
+
+.emdi-dv-list-sep,
+.emdi-dv-list-extra {
+  color: var(--text-muted);
+}
+
+.emdi-dv-empty {
+  padding: 14px 16px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.emdi-dv-footer {
+  padding: 6px 13px;
+  font-size: 11px;
+  color: var(--text-faint);
+  border-top: 1px solid var(--border);
+  text-align: right;
+}
 
 /* Mermaid Preview */
 .emdi-mermaid-preview {

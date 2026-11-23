@@ -351,6 +351,189 @@ pub fn resolve_local_target(
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DataviewNoteRecord {
+    pub name: String,
+    pub path: String,
+    pub folder: String,
+    pub ctime: String,
+    pub mtime: String,
+    pub props: std::collections::HashMap<String, serde_json::Value>,
+}
+
+fn strip_quotes(s: &str) -> String {
+    let t = s.trim();
+    if (t.starts_with('"') && t.ends_with('"') && t.len() >= 2)
+        || (t.starts_with('\'') && t.ends_with('\'') && t.len() >= 2)
+    {
+        t[1..t.len() - 1].to_string()
+    } else {
+        t.to_string()
+    }
+}
+
+fn parse_simple_yaml_frontmatter(content: &str) -> std::collections::HashMap<String, serde_json::Value> {
+    let mut props = std::collections::HashMap::new();
+    if !(content.starts_with("---\n") || content.starts_with("---\r\n")) {
+        return props;
+    }
+
+    let mut current_arr_key: Option<String> = None;
+    let mut current_arr: Vec<serde_json::Value> = Vec::new();
+
+    for (idx, raw_line) in content.lines().enumerate() {
+        if idx == 0 {
+            continue;
+        }
+        if idx > 120 {
+            break;
+        }
+        let trimmed = raw_line.trim();
+        if trimmed == "---" || trimmed == "..." {
+            if let Some(k) = current_arr_key.take() {
+                props.insert(k, serde_json::Value::Array(std::mem::take(&mut current_arr)));
+            }
+            break;
+        }
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix("- ") {
+            if current_arr_key.is_some() {
+                let item = strip_quotes(rest);
+                if !item.is_empty() {
+                    current_arr.push(serde_json::Value::String(item));
+                }
+                continue;
+            }
+        }
+        if let Some(colon) = raw_line.find(':') {
+            if let Some(k) = current_arr_key.take() {
+                props.insert(k, serde_json::Value::Array(std::mem::take(&mut current_arr)));
+            }
+            let key = raw_line[..colon].trim().to_string();
+            if key.is_empty() {
+                continue;
+            }
+            let val_part = raw_line[colon + 1..].trim();
+            if val_part.is_empty() {
+                current_arr_key = Some(key);
+                current_arr.clear();
+            } else if val_part.starts_with('[') && val_part.ends_with(']') && val_part.len() >= 2 {
+                let inner = &val_part[1..val_part.len() - 1];
+                let items: Vec<serde_json::Value> = inner
+                    .split(',')
+                    .map(strip_quotes)
+                    .filter(|s| !s.is_empty())
+                    .map(serde_json::Value::String)
+                    .collect();
+                props.insert(key, serde_json::Value::Array(items));
+            } else {
+                props.insert(key, serde_json::Value::String(strip_quotes(val_part)));
+            }
+        }
+    }
+
+    if let Some(k) = current_arr_key.take() {
+        props.insert(k, serde_json::Value::Array(current_arr));
+    }
+    props
+}
+
+pub fn query_dataview_folder(
+    from: &str,
+    base_file: Option<&Path>,
+    default_vault: Option<&Path>,
+) -> Vec<DataviewNoteRecord> {
+    let base_dir = base_file.and_then(|p| p.parent());
+    let vault_root = base_dir
+        .and_then(find_vault_root)
+        .or_else(|| default_vault.map(|p| p.to_path_buf()));
+
+    let cleaned = from.trim().trim_matches(|c| c == '"' || c == '\'' || c == '/');
+    let target_dir = if !cleaned.is_empty() {
+        vault_root
+            .as_ref()
+            .map(|r| r.join(cleaned))
+            .filter(|p| p.is_dir())
+            .or_else(|| base_dir.map(|d| d.join(cleaned)).filter(|p| p.is_dir()))
+    } else {
+        base_dir.map(|d| d.to_path_buf()).or(vault_root)
+    };
+
+    let Some(dir) = target_dir else {
+        return Vec::new();
+    };
+
+    let mut results = Vec::new();
+    let mut stack = vec![(dir, 0usize)];
+
+    while let Some((cur, depth)) = stack.pop() {
+        if depth > 10 || results.len() >= 300 {
+            continue;
+        }
+        let Ok(entries) = fs::read_dir(&cur) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if should_skip_entry(&name) {
+                continue;
+            }
+            let p = entry.path();
+            if p.is_dir() {
+                stack.push((p, depth + 1));
+                continue;
+            }
+            let ext = ext_lower(&p);
+            if ext != "md" && ext != "markdown" {
+                continue;
+            }
+
+            let head = fs::read_to_string(&p)
+                .map(|s| s.chars().take(4096).collect::<String>())
+                .unwrap_or_default();
+            let props = parse_simple_yaml_frontmatter(&head);
+
+            let mtime = fs::metadata(&p)
+                .and_then(|m| m.modified())
+                .map(|t| chrono::DateTime::<Local>::from(t).format("%Y-%m-%d").to_string())
+                .unwrap_or_default();
+            let ctime = fs::metadata(&p)
+                .and_then(|m| m.created())
+                .map(|t| chrono::DateTime::<Local>::from(t).format("%Y-%m-%d").to_string())
+                .unwrap_or_default();
+
+            let stem = p
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(&name)
+                .to_string();
+            let folder = p
+                .parent()
+                .and_then(|d| d.file_name())
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+
+            results.push(DataviewNoteRecord {
+                name: stem,
+                path: norm_path(&p),
+                folder,
+                ctime,
+                mtime,
+                props,
+            });
+            if results.len() >= 300 {
+                break;
+            }
+        }
+    }
+
+    results
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BacklinkItem {
     pub name: String,
     pub path: String,

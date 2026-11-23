@@ -6,6 +6,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { common, createLowlight } from 'lowlight';
+import { renderDataviewInto } from './ui/dataview';
 
 // ── Lazy-Loaded Mermaid (Loaded only when a mermaid block exists) ──
 
@@ -68,13 +69,18 @@ async function getMermaid(): Promise<MermaidAPI> {
 
 let imageContextProvider: () => { tabId: string; nonce: number } = () => ({ tabId: '', nonce: 1 });
 let copyFeedbackHandler: (text: string) => void = () => {};
+let openFilePathHandler: (path: string) => void = () => {};
 
 export function setExtensionProviders(opts: {
   getImageContext: () => { tabId: string; nonce: number };
   onCopyText: (text: string) => void;
+  onOpenFilePath?: (path: string) => void;
 }) {
   imageContextProvider = opts.getImageContext;
   copyFeedbackHandler = opts.onCopyText;
+  if (opts.onOpenFilePath) {
+    openFilePathHandler = opts.onOpenFilePath;
+  }
 }
 
 export function isExternalOrDataSrc(src: string): boolean {
@@ -367,11 +373,67 @@ export const EmdiCodeBlock = CodeBlockLowlight.configure({
       mermaidPreview.className = 'emdi-mermaid-preview hidden';
       mermaidPreview.contentEditable = 'false';
 
+      const dataviewPreview = document.createElement('div');
+      dataviewPreview.className = 'emdi-dataview-preview hidden';
+      dataviewPreview.contentEditable = 'false';
+
       wrapper.appendChild(header);
       wrapper.appendChild(mermaidPreview);
+      wrapper.appendChild(dataviewPreview);
       wrapper.appendChild(pre);
 
       const isMermaid = () => String(currentNode.attrs.language ?? '').toLowerCase() === 'mermaid';
+      const isDataview = () => String(currentNode.attrs.language ?? '').toLowerCase() === 'dataview';
+      let showDataviewCode = false;
+      let lastRenderedDvSource = '';
+
+      const renderDataview = async (force = false) => {
+        if (!isDataview()) {
+          dataviewPreview.classList.add('hidden');
+          if (!isMermaid()) {
+            mermaidToggleBtn.classList.add('hidden');
+            pre.classList.remove('hidden');
+          }
+          return;
+        }
+
+        mermaidPreview.classList.add('hidden');
+        mermaidToggleBtn.classList.remove('hidden');
+        mermaidToggleBtn.textContent = showDataviewCode ? '표 보기' : '쿼리 편집';
+
+        if (showDataviewCode) {
+          dataviewPreview.classList.add('hidden');
+          pre.classList.remove('hidden');
+          return;
+        }
+
+        const source = currentNode.textContent.trim();
+        if (!source) {
+          dataviewPreview.classList.add('hidden');
+          pre.classList.remove('hidden');
+          return;
+        }
+
+        if (!force && source === lastRenderedDvSource && dataviewPreview.childElementCount > 0) {
+          dataviewPreview.classList.remove('hidden');
+          pre.classList.add('hidden');
+          return;
+        }
+
+        dataviewPreview.classList.remove('hidden');
+        pre.classList.add('hidden');
+        const supported = await renderDataviewInto(dataviewPreview, source, (filePath) => {
+          openFilePathHandler(filePath);
+        });
+        if (!supported) {
+          // Unsupported advanced Dataview syntax: fall back cleanly to raw code block
+          dataviewPreview.classList.add('hidden');
+          mermaidToggleBtn.classList.add('hidden');
+          pre.classList.remove('hidden');
+          return;
+        }
+        lastRenderedDvSource = source;
+      };
 
       const renderMermaid = async (force = false) => {
         if (!isMermaid()) {
@@ -442,6 +504,18 @@ export const EmdiCodeBlock = CodeBlockLowlight.configure({
       mermaidToggleBtn.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (isDataview()) {
+          showDataviewCode = !showDataviewCode;
+          void renderDataview(true);
+          if (showDataviewCode) {
+            const pos = typeof getPos === 'function' ? getPos() : undefined;
+            if (typeof pos === 'number') {
+              editor.commands.setTextSelection(pos + 1);
+              editor.commands.focus();
+            }
+          }
+          return;
+        }
         showMermaidCode = !showMermaidCode;
         void renderMermaid(true);
         if (showMermaidCode) {
@@ -480,11 +554,15 @@ export const EmdiCodeBlock = CodeBlockLowlight.configure({
 
       syncLanguageOptions(String(currentNode.attrs.language ?? ''));
       if (isMermaid()) {
-        // Default to showing code if empty so user can type right away after slash command
         if (!currentNode.textContent.trim()) {
           showMermaidCode = true;
         }
         void renderMermaid(true);
+      } else if (isDataview()) {
+        if (!currentNode.textContent.trim()) {
+          showDataviewCode = true;
+        }
+        void renderDataview(true);
       }
 
       return {
@@ -502,17 +580,24 @@ export const EmdiCodeBlock = CodeBlockLowlight.configure({
             if (nextLang.toLowerCase() === 'mermaid' && prevLang.toLowerCase() !== 'mermaid') {
               showMermaidCode = !updatedNode.textContent.trim();
             }
+            if (nextLang.toLowerCase() === 'dataview' && prevLang.toLowerCase() !== 'dataview') {
+              showDataviewCode = !updatedNode.textContent.trim();
+            }
             void renderMermaid(true);
+            void renderDataview(true);
           } else if (textChanged && isMermaid() && !showMermaidCode) {
             if (renderDebounce) window.clearTimeout(renderDebounce);
             renderDebounce = window.setTimeout(() => void renderMermaid(true), 250);
+          } else if (textChanged && isDataview() && !showDataviewCode) {
+            if (renderDebounce) window.clearTimeout(renderDebounce);
+            renderDebounce = window.setTimeout(() => void renderDataview(true), 350);
           }
           return true;
         },
         stopEvent: (event: Event) => {
           const target = event.target as HTMLElement | null;
           if (!target) return false;
-          if (header.contains(target) || mermaidPreview.contains(target)) {
+          if (header.contains(target) || mermaidPreview.contains(target) || dataviewPreview.contains(target)) {
             return true;
           }
           return false;

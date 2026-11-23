@@ -1298,6 +1298,21 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
                 }
             }
 
+        case "queryDataviewFolder":
+            let requestId = (body["requestId"] as? String) ?? ""
+            let fromStr = (body["from"] as? String) ?? ""
+            let tabId = (body["tabId"] as? String) ?? activeTabId ?? ""
+            let baseURL = tabs.first(where: { $0.id == tabId })?.fileURL
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let items = LocalFileResolver.shared.queryDataviewFolder(from: fromStr, baseFileURL: baseURL)
+                DispatchQueue.main.async {
+                    self?.callWebJS("onDataviewResult", payload: [
+                        "requestId": requestId,
+                        "items": items
+                    ])
+                }
+            }
+
         case "findBacklinks":
             let filePath = (body["filePath"] as? String) ?? ""
             let requestId = (body["requestId"] as? String) ?? ""

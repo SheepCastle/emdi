@@ -5,8 +5,8 @@ mod file_resolver;
 use base64::Engine;
 use file_resolver::{
     can_open_in_tab, classify_file_kind, ext_lower, find_backlinks, find_vault_root,
-    list_tree_children, mime_for_path, norm_path, resolve_local_target, resolve_periodic_note_path,
-    search_tree_files,
+    list_tree_children, mime_for_path, norm_path, query_dataview_folder, resolve_local_target,
+    resolve_periodic_note_path, search_tree_files,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -647,6 +647,54 @@ fn emdi_message(
             if let Ok(val) = serde_json::to_value(res) {
                 call_web_js(&app, "onTreeChildrenLoaded", &val);
             }
+        }
+
+        "queryDataviewFolder" => {
+            let req_id = payload
+                .get("requestId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let from_str = payload
+                .get("from")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let tab_id = payload
+                .get("tabId")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let (base_file, default_vault) = {
+                let st = state_arc.lock().unwrap();
+                let tid = tab_id.or_else(|| st.active_tab_id.clone());
+                let base = tid
+                    .and_then(|id| st.tabs.iter().find(|t| t.id == id))
+                    .and_then(|t| t.file_path.clone());
+                let vault = if st.settings.default_vault_path.is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(&st.settings.default_vault_path))
+                };
+                (base, vault)
+            };
+
+            let app_clone = app.clone();
+            std::thread::spawn(move || {
+                let items = query_dataview_folder(
+                    &from_str,
+                    base_file.as_deref(),
+                    default_vault.as_deref(),
+                );
+                call_web_js(
+                    &app_clone,
+                    "onDataviewResult",
+                    &json!({
+                        "requestId": req_id,
+                        "items": items,
+                    }),
+                );
+            });
         }
 
         "findBacklinks" => {

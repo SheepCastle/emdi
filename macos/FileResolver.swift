@@ -913,6 +913,144 @@ final class LocalFileResolver {
         return .notPeriodic
     }
 
+    private func parseSimpleYAMLFrontmatter(_ content: String) -> [String: Any] {
+        guard content.hasPrefix("---\n") || content.hasPrefix("---\r\n") else { return [:] }
+        let lines = content.components(separatedBy: .newlines)
+        guard lines.count > 2 else { return [:] }
+
+        var props: [String: Any] = [:]
+        var currentArrayKey: String? = nil
+        var currentArray: [String] = []
+
+        func flushArray() {
+            if let k = currentArrayKey {
+                props[k] = currentArray
+                currentArrayKey = nil
+                currentArray = []
+            }
+        }
+
+        for i in 1..<min(lines.count, 120) {
+            let rawLine = lines[i]
+            let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
+            if trimmed == "---" || trimmed == "..." {
+                flushArray()
+                break
+            }
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+
+            if trimmed.hasPrefix("- "), let _ = currentArrayKey {
+                var item = String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                if (item.hasPrefix("\"") && item.hasSuffix("\"")) || (item.hasPrefix("'") && item.hasSuffix("'")) {
+                    item = String(item.dropFirst().dropLast())
+                }
+                if !item.isEmpty { currentArray.append(item) }
+                continue
+            }
+
+            guard let colonIdx = rawLine.firstIndex(of: ":") else { continue }
+            flushArray()
+
+            let key = String(rawLine[..<colonIdx]).trimmingCharacters(in: .whitespaces)
+            guard !key.isEmpty else { continue }
+            let valPart = String(rawLine[rawLine.index(after: colonIdx)...]).trimmingCharacters(in: .whitespaces)
+
+            if valPart.isEmpty {
+                currentArrayKey = key
+                currentArray = []
+            } else if valPart.hasPrefix("[") && valPart.hasSuffix("]") {
+                let inner = String(valPart.dropFirst().dropLast())
+                let items = inner.split(separator: ",").map { s -> String in
+                    var t = s.trimmingCharacters(in: .whitespaces)
+                    if (t.hasPrefix("\"") && t.hasSuffix("\"")) || (t.hasPrefix("'") && t.hasSuffix("'")) {
+                        t = String(t.dropFirst().dropLast())
+                    }
+                    return t
+                }.filter { !$0.isEmpty }
+                props[key] = items
+            } else {
+                var val = valPart
+                if (val.hasPrefix("\"") && val.hasSuffix("\"")) || (val.hasPrefix("'") && val.hasSuffix("'")) {
+                    val = String(val.dropFirst().dropLast())
+                }
+                props[key] = val
+            }
+        }
+        flushArray()
+        return props
+    }
+
+    func queryDataviewFolder(from: String, baseFileURL: URL?) -> [[String: Any]] {
+        let fm = FileManager.default
+        let baseDir = baseFileURL?.deletingLastPathComponent()
+        let vaultRoot = baseDir.flatMap { findVaultRoot(from: $0) }
+            ?? resolveDefaultVaultRoot(seedURLs: baseFileURL.map { [$0] } ?? [])
+
+        var targetDir: URL?
+        let cleanedFrom = from.trimmingCharacters(in: CharacterSet(charactersIn: " \"'/"))
+        if !cleanedFrom.isEmpty {
+            if let root = vaultRoot {
+                let cand = root.appendingPathComponent(cleanedFrom).standardizedFileURL
+                if fm.fileExists(atPath: cand.path) { targetDir = cand }
+            }
+            if targetDir == nil, let bDir = baseDir {
+                let cand = bDir.appendingPathComponent(cleanedFrom).standardizedFileURL
+                if fm.fileExists(atPath: cand.path) { targetDir = cand }
+            }
+        } else {
+            targetDir = baseDir ?? vaultRoot
+        }
+
+        guard let dir = targetDir else { return [] }
+        guard let enumerator = fm.enumerator(
+            at: dir,
+            includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .contentModificationDateKey, .creationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        let skipDirs: Set<String> = ["node_modules", ".git", "target", "dist", "build", "__pycache__"]
+        var results: [[String: Any]] = []
+
+        for case let candidate as URL in enumerator {
+            let name = candidate.lastPathComponent
+            let values = try? candidate.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .contentModificationDateKey, .creationDateKey])
+            if values?.isDirectory == true {
+                if skipDirs.contains(name) { enumerator.skipDescendants() }
+                continue
+            }
+            guard values?.isRegularFile == true else { continue }
+            let ext = candidate.pathExtension.lowercased()
+            guard ext == "md" || ext == "markdown" else { continue }
+
+            // Read only first 4 KB for fast frontmatter extraction
+            var headText = ""
+            if let fh = try? FileHandle(forReadingFrom: candidate) {
+                if let data = try? fh.read(upToCount: 4096) {
+                    headText = String(data: data, encoding: .utf8) ?? ""
+                }
+                try? fh.close()
+            }
+
+            let props = parseSimpleYAMLFrontmatter(headText)
+            let mtime = values?.contentModificationDate.map { df.string(from: $0) } ?? ""
+            let ctime = values?.creationDate.map { df.string(from: $0) } ?? ""
+
+            results.append([
+                "name": candidate.deletingPathExtension().lastPathComponent,
+                "path": candidate.standardizedFileURL.path,
+                "folder": candidate.deletingLastPathComponent().lastPathComponent,
+                "ctime": ctime,
+                "mtime": mtime,
+                "props": props
+            ])
+            if results.count >= 300 { break }
+        }
+
+        return results
+    }
+
     func findBacklinks(for fileURL: URL) -> [[String: Any]] {
         let std = fileURL.standardizedFileURL
         let stem = std.deletingPathExtension().lastPathComponent
