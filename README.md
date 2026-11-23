@@ -1,4 +1,4 @@
-# 엠디 (emdi) v2.6.0
+# 엠디 (emdi) v2.7.0
 
 **엠디 (emdi)** is an ultra-lightweight (~7 MB), native macOS Markdown & vault editor built with Swift (AppKit + `WKWebView`) and TipTap.
 
@@ -77,7 +77,7 @@ cd emdi
 | | `Cmd + Shift + P` | Command Palette |
 | | `Cmd + K` | Quick Open File |
 | **Layout** | `Cmd + B` / `Cmd + \` | Toggle Left Sidebar |
-| | `Cmd + E` / `Cmd + Shift + O` | Toggle File Explorer / Document Outline |
+| | `Cmd + E` / `Cmd + Shift + O` | Toggle Right Inspector (Outline · Tasks · Links) / Document Outline |
 | | `Cmd + Shift + L` | Reveal Active File in File Tree |
 | | `Cmd + Shift + F` | Toggle Focus Mode |
 | | `Cmd + /` | Toggle Raw Markdown / Preview |

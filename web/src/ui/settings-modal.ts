@@ -272,7 +272,8 @@ export class SettingsModalController {
         title: '화면 및 레이아웃',
         items: [
           ['좌측 사이드바 토글', `${mod}B / ${mod}\\`],
-          ['파일 탐색기 / 문서 목차', `${mod}E / ${mod}${shift}O`],
+          ['우측 인스펙터 토글 (목차·할 일·연결)', `${mod}E`],
+          ['문서 목차 바로 열기', `${mod}${shift}O`],
           ['현재 파일 위치 보기', `${mod}${shift}L`],
           ['집중 모드 (사이드바 숨김)', `${mod}${shift}F`],
           ['원문 마크다운 / 미리보기 전환', `${mod}/`],

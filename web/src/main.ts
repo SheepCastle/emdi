@@ -35,6 +35,7 @@ import { FloatingToolsController } from './ui/floating-tools';
 import { FileTreeController } from './ui/file-tree';
 import { CommandPaletteController, type CommandItem } from './ui/command-palette';
 import { SettingsModalController } from './ui/settings-modal';
+import { InspectorController } from './ui/inspector';
 import { applyThemePalette } from './ui/themes';
 import { formatFileSize, getFileIconSVG } from './ui/file-icons';
 import { renderCodeOrDataPreview } from './ui/code-preview';
@@ -43,8 +44,6 @@ import { renderCodeOrDataPreview } from './ui/code-preview';
 
 const appEl = document.getElementById('app') as HTMLDivElement;
 const sidebarHeaderEl = document.getElementById('sidebar-header') as HTMLDivElement;
-const sidebarTabFolder = document.getElementById('sidebar-tab-folder') as HTMLButtonElement;
-const sidebarTabOutline = document.getElementById('sidebar-tab-outline') as HTMLButtonElement;
 const btnSidebarCollapse = document.getElementById('btn-sidebar-collapse') as HTMLButtonElement;
 const btnSidebarOpen = document.getElementById('btn-sidebar-open') as HTMLButtonElement;
 const outlineListEl = document.getElementById('outline-list') as HTMLElement;
@@ -74,11 +73,14 @@ const externalBannerEl = document.getElementById('external-banner') as HTMLEleme
 const btnExternalReload = document.getElementById('btn-external-reload') as HTMLButtonElement;
 const btnExternalKeep = document.getElementById('btn-external-keep') as HTMLButtonElement;
 
-const updateBannerEl = document.getElementById('update-banner') as HTMLElement;
-const updateBannerLabelEl = document.getElementById('update-banner-label') as HTMLSpanElement;
+const sidebarUpdateCardEl = document.getElementById('sidebar-update-card') as HTMLDivElement;
+const sucTitleEl = document.getElementById('suc-title') as HTMLSpanElement;
+const sucDescEl = document.getElementById('suc-desc') as HTMLParagraphElement;
 const btnUpdateInstall = document.getElementById('btn-update-install') as HTMLButtonElement;
 const btnUpdateNotes = document.getElementById('btn-update-notes') as HTMLButtonElement;
 const btnUpdateDismiss = document.getElementById('btn-update-dismiss') as HTMLButtonElement;
+const btnSidebarSettings = document.getElementById('btn-sidebar-settings') as HTMLButtonElement;
+const btnSidebarShortcuts = document.getElementById('btn-sidebar-shortcuts') as HTMLButtonElement;
 
 const editorScrollEl = document.getElementById('editor-scroll') as HTMLElement;
 const documentContainerEl = document.querySelector('.document-container') as HTMLElement;
@@ -221,6 +223,23 @@ const fileTree = new FileTreeController({
   getOpenTabFiles: () =>
     tabs.map((t) => ({ fileName: t.fileName, filePath: t.filePath, fileKind: t.fileKind, ext: t.ext })),
   showToast,
+});
+
+const inspector = new InspectorController({
+  postNative,
+  getActiveTabInfo: () => {
+    const tab = getActiveTab();
+    return tab ? { filePath: tab.filePath, fileName: tab.fileName, fileKind: tab.fileKind } : null;
+  },
+  getRichEditorEl: () => richEditorEl,
+  onOutlineRefresh: () => updateOutline(),
+  onOpenLink: (target, isWiki) => {
+    if (target.startsWith('#')) {
+      scrollToAnchor(target.slice(1));
+    } else {
+      postNative({ type: 'openLink', target, isWiki, tabId: activeTabId ?? '' });
+    }
+  },
 });
 
 // ── Editor Setup ──
@@ -399,6 +418,7 @@ const editor: Editor = new Editor({
     }
     updateDocStats();
     updateOutline();
+  inspector.refreshAll(false);
   },
 });
 
@@ -848,6 +868,7 @@ function mountTabToView(tab: TabDocState, anchor?: string, preserveScroll = fals
   fileTree.syncWithActiveFile(tab.filePath);
   updateDocStats();
   updateOutline();
+  inspector.refreshAll(false);
   if (findReplace.isOpen) {
     if (tab.fileKind === 'pdf' || tab.fileKind === 'image') {
       findReplace.close();
@@ -1227,6 +1248,7 @@ function toggleSourceMode() {
     renderFrontmatterUI(tab);
     tab.editorState = createFreshEditorStateForBody(body);
     updateOutline();
+  inspector.refreshAll(false);
     editor.commands.focus();
   }
 
@@ -1600,11 +1622,11 @@ const commandPalette = new CommandPaletteController({
     },
     {
       id: 'toggle-outline',
-      title: '문서 목차(Outline) 토글',
+      title: '문서 목차(Outline) 열기/닫기',
       category: '보기',
       shortcut: '⌘⇧O',
       keywords: ['outline', 'toc', '목차', '헤딩'],
-      run: () => fileTree.toggleOutlineMode(() => updateOutline()),
+      run: () => inspector.openTab('outline'),
     },
     {
       id: 'reveal-in-tree',
@@ -1615,12 +1637,12 @@ const commandPalette = new CommandPaletteController({
       run: () => fileTree.revealActiveFile(),
     },
     {
-      id: 'toggle-file-tree',
-      title: '파일 탐색기 토글',
+      id: 'toggle-inspector',
+      title: '우측 인스펙터 토글 (목차 · 할 일 · 연결)',
       category: '보기',
       shortcut: '⌘E',
-      keywords: ['explorer', 'tree', 'folder', '탐색기', '폴더'],
-      run: () => fileTree.toggleFileTreeMode(),
+      keywords: ['inspector', 'right', 'panel', 'tasks', 'backlinks', '인스펙터', '우측', '할일', '연결'],
+      run: () => inspector.toggle(),
     },
     {
       id: 'toggle-sidebar',
@@ -1917,9 +1939,10 @@ function applyUpdateState(payload: UpdateStatePayload) {
   const showAvailable = Boolean(payload.hasUpdate && payload.latestVersion);
 
   if (isBusy) {
-    updateBannerEl.classList.remove('hidden');
-    updateBannerEl.classList.add('busy');
-    updateBannerLabelEl.textContent = payload.message || `v${payload.latestVersion ?? ''} 업데이트 진행 중...`;
+    sidebarUpdateCardEl.classList.remove('hidden');
+    sidebarUpdateCardEl.classList.add('busy');
+    sucTitleEl.textContent = `v${payload.latestVersion ?? ''} 업데이트 중`;
+    sucDescEl.textContent = payload.message || '새 버전을 적용하고 있습니다...';
     btnUpdateInstall.textContent = payload.status === 'downloading' ? '다운로드 중...' : '설치 중...';
     btnUpdateInstall.disabled = true;
     btnUpdateDismiss.classList.add('hidden');
@@ -1927,9 +1950,10 @@ function applyUpdateState(payload: UpdateStatePayload) {
     btnUpdatePill.textContent = payload.status === 'downloading' ? '다운로드 중...' : '설치 중...';
     btnUpdatePill.disabled = true;
   } else if (showAvailable) {
-    updateBannerEl.classList.remove('busy');
-    updateBannerEl.classList.toggle('hidden', Boolean(payload.bannerDismissed));
-    updateBannerLabelEl.textContent = `새 버전 v${payload.latestVersion} 사용 가능 (현재 v${payload.currentVersion})`;
+    sidebarUpdateCardEl.classList.remove('busy');
+    sidebarUpdateCardEl.classList.toggle('hidden', Boolean(payload.bannerDismissed));
+    sucTitleEl.textContent = `v${payload.latestVersion} 업데이트 가능`;
+    sucDescEl.textContent = `현재 v${payload.currentVersion} · 새 버전을 설치할 수 있습니다.`;
     btnUpdateInstall.textContent = '지금 업데이트';
     btnUpdateInstall.disabled = false;
     btnUpdateDismiss.classList.remove('hidden');
@@ -1937,8 +1961,8 @@ function applyUpdateState(payload: UpdateStatePayload) {
     btnUpdatePill.textContent = `↑ v${payload.latestVersion} 업데이트`;
     btnUpdatePill.disabled = false;
   } else {
-    updateBannerEl.classList.add('hidden');
-    updateBannerEl.classList.remove('busy');
+    sidebarUpdateCardEl.classList.add('hidden');
+    sidebarUpdateCardEl.classList.remove('busy');
     btnUpdatePill.classList.add('hidden');
   }
 
@@ -2060,8 +2084,6 @@ richEditorEl.addEventListener('click', (event) => {
 
 btnSidebarCollapse.addEventListener('click', () => fileTree.toggleSidebar());
 btnSidebarOpen.addEventListener('click', () => fileTree.toggleSidebar());
-sidebarTabFolder.addEventListener('click', () => fileTree.setMode('folder'));
-sidebarTabOutline.addEventListener('click', () => fileTree.setMode('outline', () => updateOutline()));
 
 btnNewTab.addEventListener('click', () => postNative({ type: 'newTab' }));
 btnOpenDefault.addEventListener('click', () => postNative({ type: 'openWithDefaultApp', tabId: activeTabId ?? '' }));
@@ -2204,12 +2226,20 @@ btnUpdateInstall.addEventListener('click', () => {
 });
 
 btnUpdateNotes.addEventListener('click', () => {
-  postNative({ type: 'openReleaseNotes' });
+  settingsModal.open('releases');
 });
 
 btnUpdateDismiss.addEventListener('click', () => {
-  updateBannerEl.classList.add('hidden');
+  sidebarUpdateCardEl.classList.add('hidden');
   postNative({ type: 'dismissUpdateBanner' });
+});
+
+btnSidebarSettings.addEventListener('click', () => {
+  settingsModal.open('appearance');
+});
+
+btnSidebarShortcuts.addEventListener('click', () => {
+  settingsModal.open('shortcuts');
 });
 
 btnUpdatePill.addEventListener('click', () => {
@@ -2428,7 +2458,7 @@ window.addEventListener('keydown', (event) => {
 
   if (key === 'o' && event.shiftKey && !event.altKey) {
     event.preventDefault();
-    fileTree.toggleOutlineMode(() => updateOutline());
+    inspector.openTab('outline');
     return;
   }
 
@@ -2477,7 +2507,7 @@ window.addEventListener('keydown', (event) => {
 
   if (key === 'e' && !event.shiftKey && !event.altKey) {
     event.preventDefault();
-    fileTree.toggleFileTreeMode();
+    inspector.toggle();
     return;
   }
 
@@ -2571,8 +2601,9 @@ window.__emdi = {
   requestSave: (payload) => requestSave(payload?.tabId),
   toggleSourceMode,
   toggleSidebar: () => fileTree.toggleSidebar(),
-  toggleFileTree: () => fileTree.toggleFileTreeMode(),
-  toggleOutline: () => fileTree.toggleOutlineMode(() => updateOutline()),
+  toggleFileTree: () => fileTree.toggleSidebar(),
+  toggleInspector: () => inspector.toggle(),
+  toggleOutline: () => inspector.openTab('outline'),
   revealActiveInTree: () => fileTree.revealActiveFile(),
   toggleFocusMode,
   openQuickOpen: () => {
@@ -2672,6 +2703,7 @@ window.__emdi = {
   },
   onTreeChildrenLoaded: (payload) => fileTree.onChildrenLoaded(payload),
   onTreeSearchResults: (payload) => fileTree.onSearchResults(payload),
+  onBacklinksLoaded: (payload) => inspector.onBacklinksLoaded(payload),
   notifyExternalConflict: ({ tabId }) => {
     const tab = tabs.find((t) => t.id === tabId);
     if (!tab) return;

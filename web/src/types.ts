@@ -32,6 +32,19 @@ export interface TreeSearchPayload {
   items: TreeNodeItem[];
 }
 
+export interface BacklinkItem {
+  name: string;
+  path: string;
+  relPath: string;
+  snippet: string;
+}
+
+export interface BacklinksPayload {
+  requestId?: string;
+  filePath: string;
+  items: BacklinkItem[];
+}
+
 export interface TabDocState {
   id: string;
   fileName: string;
@@ -113,6 +126,7 @@ export interface EmdiWindowAPI {
   toggleSourceMode: () => void;
   toggleSidebar: () => void;
   toggleFileTree: () => void;
+  toggleInspector: () => void;
   toggleOutline: () => void;
   revealActiveInTree: () => void;
   toggleFocusMode: () => void;
@@ -144,6 +158,7 @@ export interface EmdiWindowAPI {
   setPrintMode: (payload: { enabled: boolean }) => void;
   onTreeChildrenLoaded: (payload: TreeChildrenPayload) => void;
   onTreeSearchResults: (payload: TreeSearchPayload) => void;
+  onBacklinksLoaded: (payload: BacklinksPayload) => void;
   notifyExternalConflict: (payload: { tabId: string; fileName: string; filePath: string }) => void;
   onImageSaved: (payload: { requestId: string; relativePath: string; alt?: string }) => void;
   onImageSaveError: (payload: { requestId: string; message?: string; silent?: boolean }) => void;

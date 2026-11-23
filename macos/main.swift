@@ -581,7 +581,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
 
     func toggleSourceMode() { callWebAction("toggleSourceMode()") }
     func toggleSidebar() { callWebAction("toggleSidebar()") }
-    func toggleFileTree() { callWebAction("toggleFileTree()") }
+    func toggleFileTree() { callWebAction("toggleSidebar()") }
+    func toggleInspector() { callWebAction("toggleInspector()") }
     func toggleOutline() { callWebAction("toggleOutline()") }
     func revealActiveInTree() { callWebAction("revealActiveInTree()") }
     func toggleFocusMode() { callWebAction("toggleFocusMode()") }
@@ -1297,6 +1298,22 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
                 }
             }
 
+        case "findBacklinks":
+            let filePath = (body["filePath"] as? String) ?? ""
+            let requestId = (body["requestId"] as? String) ?? ""
+            guard !filePath.isEmpty else { return }
+            let url = URL(fileURLWithPath: filePath)
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let items = LocalFileResolver.shared.findBacklinks(for: url)
+                DispatchQueue.main.async {
+                    self?.callWebJS("onBacklinksLoaded", payload: [
+                        "requestId": requestId,
+                        "filePath": filePath,
+                        "items": items
+                    ])
+                }
+            }
+
         case "searchTreeFiles":
             let rootPath = (body["rootPath"] as? String) ?? ""
             let query = (body["query"] as? String) ?? ""
@@ -1925,7 +1942,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func moveLineUpAction() { activeController?.moveLine(delta: -1) }
     @objc private func moveLineDownAction() { activeController?.moveLine(delta: 1) }
     @objc private func toggleSidebarAction() { activeController?.toggleSidebar() }
-    @objc private func toggleFileTreeAction() { activeController?.toggleFileTree() }
+    @objc private func toggleFileTreeAction() { activeController?.toggleInspector() }
     @objc private func toggleOutlineAction() { activeController?.toggleOutline() }
     @objc private func revealActiveInTreeAction() { activeController?.revealActiveInTree() }
     @objc private func toggleFocusModeAction() { activeController?.toggleFocusMode() }
@@ -2070,7 +2087,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cmdPalette.keyEquivalentModifierMask = [.command, .shift]
         viewMenu.addItem(.separator())
         viewMenu.addItem(withTitle: "사이드바 토글", action: #selector(toggleSidebarAction), keyEquivalent: "b")
-        viewMenu.addItem(withTitle: "파일 탐색기 토글", action: #selector(toggleFileTreeAction), keyEquivalent: "e")
+        viewMenu.addItem(withTitle: "우측 인스펙터 토글", action: #selector(toggleFileTreeAction), keyEquivalent: "e")
         let outlineItem = viewMenu.addItem(withTitle: "문서 목차 토글", action: #selector(toggleOutlineAction), keyEquivalent: "O")
         outlineItem.keyEquivalentModifierMask = [.command, .shift]
         let revealTreeItem = viewMenu.addItem(withTitle: "파일트리에서 현재 파일 보기", action: #selector(revealActiveInTreeAction), keyEquivalent: "L")

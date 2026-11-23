@@ -913,6 +913,72 @@ final class LocalFileResolver {
         return .notPeriodic
     }
 
+    func findBacklinks(for fileURL: URL) -> [[String: Any]] {
+        let std = fileURL.standardizedFileURL
+        let stem = std.deletingPathExtension().lastPathComponent
+        guard !stem.isEmpty else { return [] }
+
+        let parentDir = std.deletingLastPathComponent()
+        let searchRoot = findVaultRoot(from: parentDir) ?? parentDir
+        let rootNorm = canonicalPath(searchRoot)
+        let prefix = rootNorm.hasSuffix("/") ? rootNorm : rootNorm + "/"
+        let selfPath = canonicalPath(std)
+        let needleLower = "[[\(stem.lowercased())"
+
+        let fm = FileManager.default
+        guard let enumerator = fm.enumerator(
+            at: searchRoot,
+            includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        var results: [[String: Any]] = []
+        let skipDirs: Set<String> = ["node_modules", ".git", "target", "dist", "build", "__pycache__"]
+
+        for case let candidate as URL in enumerator {
+            let name = candidate.lastPathComponent
+            let values = try? candidate.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey])
+            if values?.isDirectory == true {
+                if skipDirs.contains(name) { enumerator.skipDescendants() }
+                continue
+            }
+            guard values?.isRegularFile == true else { continue }
+            let ext = candidate.pathExtension.lowercased()
+            guard ext == "md" || ext == "markdown" else { continue }
+            let candNorm = canonicalPath(candidate)
+            if candNorm == selfPath { continue }
+
+            guard let content = try? String(contentsOf: candidate, encoding: .utf8) else { continue }
+            let lower = content.lowercased()
+            guard let range = lower.range(of: needleLower) else { continue }
+
+            // Ensure exact wikilink stem match (followed by ]], |, or #)
+            let afterIdx = range.upperBound
+            if afterIdx < lower.endIndex {
+                let nextCh = lower[afterIdx]
+                if nextCh != "]" && nextCh != "|" && nextCh != "#" {
+                    continue
+                }
+            }
+
+            let lineRange = content.lineRange(for: range)
+            let snippet = String(content[lineRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let relPath = candNorm.hasPrefix(prefix) ? String(candNorm.dropFirst(prefix.count)) : name
+
+            results.append([
+                "name": candidate.deletingPathExtension().lastPathComponent,
+                "path": candidate.standardizedFileURL.path,
+                "relPath": relPath,
+                "snippet": String(snippet.prefix(140))
+            ])
+            if results.count >= 40 { break }
+        }
+
+        return results.sorted {
+            (($0["name"] as? String) ?? "").localizedCaseInsensitiveCompare(($1["name"] as? String) ?? "") == .orderedAscending
+        }
+    }
+
     func vaultRelativePath(for fileURL: URL) -> String {
         let stdFile = canonicalPath(fileURL)
         if let vaultRoot = findVaultRoot(from: fileURL.deletingLastPathComponent()) {

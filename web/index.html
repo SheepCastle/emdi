@@ -10,10 +10,7 @@
       <!-- 좌측 풀하이트 Paseo 스타일 사이드바 -->
       <aside id="sidebar-panel" class="sidebar-panel">
         <div class="sidebar-header" id="sidebar-header">
-          <div class="sidebar-seg" role="tablist">
-            <button id="sidebar-tab-folder" class="sidebar-seg-btn active" type="button" title="파일 탐색기 (⌘E)">파일</button>
-            <button id="sidebar-tab-outline" class="sidebar-seg-btn" type="button" title="문서 목차 (⌘⇧O)">목차</button>
-          </div>
+          <span class="sidebar-title">파일 탐색기</span>
           <button id="btn-sidebar-collapse" class="icon-btn sm" type="button" title="사이드바 접기 (⌘B)">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.35" />
@@ -64,9 +61,39 @@
           <div id="file-tree-list" class="file-tree-list" role="tree"></div>
         </div>
 
-        <!-- 목차 뷰 -->
-        <div id="outline-view" class="sidebar-view hidden">
-          <nav id="outline-list" class="outline-list"></nav>
+        <!-- 좌측 하단 고정 푸터 (Paseo 스타일 업데이트 카드 + 설정/단축키) -->
+        <div class="sidebar-footer" id="sidebar-footer">
+          <div id="sidebar-update-card" class="sidebar-update-card hidden" role="status" aria-live="polite">
+            <div class="suc-header">
+              <div class="suc-title-wrap">
+                <span class="update-banner-dot"></span>
+                <span id="suc-title" class="suc-title">새 버전 사용 가능</span>
+              </div>
+              <button id="btn-update-dismiss" class="suc-close" type="button" title="닫기">×</button>
+            </div>
+            <p id="suc-desc" class="suc-desc">최신 버전으로 업데이트할 수 있습니다.</p>
+            <div class="suc-actions">
+              <button id="btn-update-install" class="suc-btn primary" type="button">지금 업데이트</button>
+              <button id="btn-update-notes" class="suc-btn" type="button">변경 내역</button>
+            </div>
+          </div>
+
+          <div class="sidebar-footer-bar">
+            <button id="btn-sidebar-settings" class="sidebar-footer-btn" type="button" title="설정 및 테마 (⌘,)">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="2.3" stroke="currentColor" stroke-width="1.35" />
+                <path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+              </svg>
+              <span>설정</span>
+            </button>
+            <button id="btn-sidebar-shortcuts" class="sidebar-footer-btn" type="button" title="키보드 단축키 안내">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <rect x="1.8" y="3.5" width="12.4" height="9" rx="1.8" stroke="currentColor" stroke-width="1.3" />
+                <path d="M4.5 6.5h1M7.5 6.5h1M10.5 6.5h1M5 9.5h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+              </svg>
+              <span>단축키</span>
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -123,6 +150,12 @@
             <span class="tabbar-sep" id="tabbar-action-sep"></span>
             <button id="btn-mode" class="pill-btn" type="button" title="원문 / 미리보기 전환 (⌘/)">원문</button>
             <button id="btn-save" class="pill-btn accent" type="button" title="저장 (⌘S)">저장</button>
+            <button id="btn-inspector-toggle" class="icon-btn sm" type="button" title="우측 인스펙터 토글 (⌘E)">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.35" />
+                <path d="M10 2.5v11" stroke="currentColor" stroke-width="1.35" />
+              </svg>
+            </button>
           </div>
         </header>
 
@@ -135,19 +168,6 @@
           <div class="external-banner-actions">
             <button id="btn-external-reload" class="banner-btn primary" type="button">최신 내용 불러오기</button>
             <button id="btn-external-keep" class="banner-btn" type="button">내 편집 유지</button>
-          </div>
-        </div>
-
-        <!-- 앱 업데이트 안내 배너 (Paseo 스타일) -->
-        <div id="update-banner" class="update-banner hidden" role="status" aria-live="polite">
-          <div class="update-banner-text">
-            <span class="update-banner-dot"></span>
-            <span id="update-banner-label">새 버전을 사용할 수 있습니다</span>
-          </div>
-          <div class="update-banner-actions">
-            <button id="btn-update-install" class="banner-btn accent" type="button">지금 업데이트</button>
-            <button id="btn-update-notes" class="banner-btn" type="button">릴리즈 노트</button>
-            <button id="btn-update-dismiss" class="banner-btn subtle" type="button">나중에</button>
           </div>
         </div>
 
@@ -224,6 +244,54 @@
           </div>
         </footer>
       </div>
+
+      <!-- 우측 인스펙터 리사이즈 핸들 -->
+      <div id="inspector-resizer" class="sidebar-resizer hidden" title="드래그하여 인스펙터 너비 조절"></div>
+
+      <!-- 우측 인스펙터 패널 (Cmd+E / Ctrl+E) -->
+      <aside id="inspector-panel" class="inspector-panel collapsed">
+        <div class="inspector-header">
+          <div class="sidebar-seg" role="tablist">
+            <button id="inspector-tab-outline" class="sidebar-seg-btn active" type="button" title="문서 목차">목차</button>
+            <button id="inspector-tab-tasks" class="sidebar-seg-btn" type="button" title="할 일 모아보기">할 일 <span id="inspector-tasks-badge" class="ins-tab-badge hidden">0</span></button>
+            <button id="inspector-tab-links" class="sidebar-seg-btn" type="button" title="연결된 노트 및 백링크">연결</button>
+          </div>
+          <button id="btn-inspector-close" class="icon-btn sm" type="button" title="인스펙터 닫기 (⌘E)">×</button>
+        </div>
+
+        <div id="inspector-pane-outline" class="inspector-view">
+          <div class="ins-summary-grid">
+            <div class="ins-stat-box">
+              <span class="ins-stat-label">글자</span>
+              <span id="ins-stat-chars" class="ins-stat-val">-</span>
+            </div>
+            <div class="ins-stat-box">
+              <span class="ins-stat-label">읽기</span>
+              <span id="ins-stat-read" class="ins-stat-val">-</span>
+            </div>
+            <div class="ins-stat-box">
+              <span class="ins-stat-label">할 일</span>
+              <span id="ins-stat-tasks" class="ins-stat-val">-</span>
+            </div>
+          </div>
+          <nav id="outline-list" class="outline-list"></nav>
+        </div>
+
+        <div id="inspector-pane-tasks" class="inspector-view hidden">
+          <div id="inspector-tasks-list" class="inspector-list"></div>
+        </div>
+
+        <div id="inspector-pane-links" class="inspector-view hidden">
+          <div class="ins-section">
+            <div class="ins-section-title">이 문서의 링크</div>
+            <div id="inspector-outgoing-list" class="inspector-list"></div>
+          </div>
+          <div class="ins-section">
+            <div class="ins-section-title">백링크 (이 노트를 참조)</div>
+            <div id="inspector-backlinks-list" class="inspector-list"></div>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <!-- 플로팅 찾기 및 바꾸기 바 -->

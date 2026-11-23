@@ -349,6 +349,111 @@ pub fn resolve_local_target(
     None
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BacklinkItem {
+    pub name: String,
+    pub path: String,
+    pub rel_path: String,
+    pub snippet: String,
+}
+
+pub fn find_backlinks(file_path: &Path) -> Vec<BacklinkItem> {
+    let stem = file_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_string();
+    if stem.is_empty() {
+        return Vec::new();
+    }
+
+    let Some(parent_dir) = file_path.parent() else {
+        return Vec::new();
+    };
+    let search_root = find_vault_root(parent_dir).unwrap_or_else(|| parent_dir.to_path_buf());
+    let root_norm = norm_path(&search_root);
+    let prefix = if root_norm.ends_with('/') {
+        root_norm.clone()
+    } else {
+        format!("{}/", root_norm)
+    };
+    let self_norm = norm_path(file_path).to_lowercase();
+    let needle_lower = format!("[[{}", stem.to_lowercase());
+
+    let mut results = Vec::new();
+    let mut stack = vec![(search_root, 0usize)];
+
+    while let Some((dir, depth)) = stack.pop() {
+        if depth > 10 || results.len() >= 40 {
+            continue;
+        }
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if should_skip_entry(&name) {
+                continue;
+            }
+            let p = entry.path();
+            if p.is_dir() {
+                stack.push((p, depth + 1));
+                continue;
+            }
+            let ext = ext_lower(&p);
+            if ext != "md" && ext != "markdown" {
+                continue;
+            }
+            let cand_norm = norm_path(&p);
+            if cand_norm.to_lowercase() == self_norm {
+                continue;
+            }
+            let Ok(content) = fs::read_to_string(&p) else {
+                continue;
+            };
+
+            let mut matched_snippet: Option<String> = None;
+            for line in content.lines() {
+                let low = line.to_lowercase();
+                if let Some(pos) = low.find(&needle_lower) {
+                    let after = &low[pos + needle_lower.len()..];
+                    if after.starts_with("]]") || after.starts_with('|') || after.starts_with('#') {
+                        let trimmed = line.trim();
+                        let snippet: String = trimmed.chars().take(140).collect();
+                        matched_snippet = Some(snippet);
+                        break;
+                    }
+                }
+            }
+
+            if let Some(snippet) = matched_snippet {
+                let rel_path = cand_norm
+                    .strip_prefix(&prefix)
+                    .unwrap_or(&name)
+                    .to_string();
+                let doc_name = p
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(&name)
+                    .to_string();
+                results.push(BacklinkItem {
+                    name: doc_name,
+                    path: cand_norm,
+                    rel_path,
+                    snippet,
+                });
+                if results.len() >= 40 {
+                    break;
+                }
+            }
+        }
+    }
+
+    results.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    results
+}
+
 pub fn resolve_periodic_note_path(
     kind: &str,
     vault_root: &Path,

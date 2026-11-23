@@ -4,8 +4,9 @@ mod file_resolver;
 
 use base64::Engine;
 use file_resolver::{
-    can_open_in_tab, classify_file_kind, ext_lower, find_vault_root, list_tree_children,
-    mime_for_path, norm_path, resolve_local_target, resolve_periodic_note_path, search_tree_files,
+    can_open_in_tab, classify_file_kind, ext_lower, find_backlinks, find_vault_root,
+    list_tree_children, mime_for_path, norm_path, resolve_local_target, resolve_periodic_note_path,
+    search_tree_files,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -417,6 +418,42 @@ fn emdi_message(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
+            let dirty_info = {
+                let st = state_arc.lock().unwrap();
+                st.tabs
+                    .iter()
+                    .find(|t| t.id == tab_id)
+                    .map(|t| {
+                        let name = t
+                            .file_path
+                            .as_ref()
+                            .and_then(|p| p.file_name())
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("제목 없음.md")
+                            .to_string();
+                        (t.is_dirty, name)
+                    })
+            };
+
+            if let Some((true, name)) = dirty_info {
+                let decision = rfd::MessageDialog::new()
+                    .set_title("변경 사항을 저장하시겠습니까?")
+                    .set_description(format!(
+                        "{}에 저장되지 않은 변경 사항이 있습니다.\n\n예: 저장 후 닫기 / 아니오: 저장 안 하고 닫기 / 취소: 돌아가기",
+                        name
+                    ))
+                    .set_buttons(rfd::MessageButtons::YesNoCancel)
+                    .show();
+                match decision {
+                    rfd::MessageDialogResult::Yes => {
+                        call_web_js(&app, "requestSave", &json!({ "tabId": tab_id }));
+                        return;
+                    }
+                    rfd::MessageDialogResult::No => {}
+                    _ => return,
+                }
+            }
+
             let mut st = state_arc.lock().unwrap();
             if let Some(idx) = st.tabs.iter().position(|t| t.id == tab_id) {
                 let removed = st.tabs.remove(idx);
@@ -610,6 +647,35 @@ fn emdi_message(
             if let Ok(val) = serde_json::to_value(res) {
                 call_web_js(&app, "onTreeChildrenLoaded", &val);
             }
+        }
+
+        "findBacklinks" => {
+            let file_path = payload
+                .get("filePath")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let req_id = payload
+                .get("requestId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            if file_path.is_empty() {
+                return;
+            }
+            let app_clone = app.clone();
+            std::thread::spawn(move || {
+                let items = find_backlinks(Path::new(&file_path));
+                call_web_js(
+                    &app_clone,
+                    "onBacklinksLoaded",
+                    &json!({
+                        "requestId": req_id,
+                        "filePath": file_path,
+                        "items": items,
+                    }),
+                );
+            });
         }
 
         "searchTreeFiles" => {

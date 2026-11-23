@@ -30,10 +30,10 @@ export class FileTreeController {
   private readonly appEl = document.getElementById('app') as HTMLDivElement;
   private readonly sidebarEl = document.getElementById('sidebar-panel') as HTMLElement;
   private readonly resizerEl = document.getElementById('sidebar-resizer') as HTMLDivElement;
-  private readonly tabFolderBtn = document.getElementById('sidebar-tab-folder') as HTMLButtonElement;
-  private readonly tabOutlineBtn = document.getElementById('sidebar-tab-outline') as HTMLButtonElement;
+  private readonly tabFolderBtn = document.getElementById('sidebar-tab-folder') as HTMLButtonElement | null;
+  private readonly tabOutlineBtn = document.getElementById('sidebar-tab-outline') as HTMLButtonElement | null;
   private readonly folderViewEl = document.getElementById('folder-view') as HTMLElement;
-  private readonly outlineViewEl = document.getElementById('outline-view') as HTMLElement;
+  private readonly outlineViewEl = document.getElementById('outline-view') as HTMLElement | null;
   private readonly rootNameEl = document.getElementById('tree-root-name') as HTMLSpanElement;
   private readonly btnMdOnly = document.getElementById('btn-tree-md-only') as HTMLButtonElement;
   private readonly btnUp = document.getElementById('btn-tree-up') as HTMLButtonElement;
@@ -166,10 +166,12 @@ export class FileTreeController {
 
   setMode(mode: 'folder' | 'outline', onOutlineActivate?: () => void) {
     this.sidebarMode = mode;
-    this.tabFolderBtn.classList.toggle('active', mode === 'folder');
-    this.tabOutlineBtn.classList.toggle('active', mode === 'outline');
-    this.folderViewEl.classList.toggle('hidden', mode !== 'folder');
-    this.outlineViewEl.classList.toggle('hidden', mode !== 'outline');
+    this.tabFolderBtn?.classList.toggle('active', mode === 'folder');
+    this.tabOutlineBtn?.classList.toggle('active', mode === 'outline');
+    if (this.outlineViewEl) {
+      this.folderViewEl.classList.toggle('hidden', mode !== 'folder');
+      this.outlineViewEl.classList.toggle('hidden', mode !== 'outline');
+    }
     if (mode === 'outline') {
       onOutlineActivate?.();
     } else {
