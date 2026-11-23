@@ -114,7 +114,8 @@ fn call_web_js(app: &AppHandle, method: &str, payload: &Value) {
 }
 
 fn preview_url_for(path: &Path, tab_id: &str) -> String {
-    let encoded_path = urlencoding::encode(&norm_path(path));
+    let normalized = norm_path(path);
+    let encoded_path = urlencoding::encode(&normalized);
     format!(
         "http://emdi-local.localhost/file?path={}&tabId={}",
         encoded_path,
