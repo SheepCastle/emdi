@@ -50,11 +50,13 @@ with open(pkg_path, "w", encoding="utf-8") as f:
     json.dump(pkg, f, ensure_ascii=False, indent=2)
     f.write("\n")
 
-with open(readme_path, "r", encoding="utf-8") as f:
-    readme = f.read()
-readme = re.sub(r"^# 엠디 \(emdi\) v[0-9]+\.[0-9]+\.[0-9]+", f"# 엠디 (emdi) v{next_ver}", readme, count=1, flags=re.M)
-with open(readme_path, "w", encoding="utf-8") as f:
-    f.write(readme)
+for rpath in (readme_path, readme_path.replace("README.md", "README.en.md")):
+    if os.path.exists(rpath):
+        with open(rpath, "r", encoding="utf-8") as f:
+            readme = f.read()
+        readme = re.sub(r"^# 엠디 \(emdi\) v[0-9]+\.[0-9]+\.[0-9]+", f"# 엠디 (emdi) v{next_ver}", readme, count=1, flags=re.M)
+        with open(rpath, "w", encoding="utf-8") as f:
+            f.write(readme)
 
 if os.path.exists(cargo_path):
     with open(cargo_path, "r", encoding="utf-8") as f:
