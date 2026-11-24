@@ -2348,6 +2348,41 @@ html[data-platform='windows'] .app-shell.sidebar-collapsed .tabbar {
   transform: translate(1px, -1px);
 }
 
+.feedback-email-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.feedback-email-subactions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 2px;
+}
+
+.feedback-sub-btn {
+  flex: 1;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface-0);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.feedback-sub-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-strong);
+  border-color: var(--border-accent);
+}
+
 .feedback-footnote {
   margin: 2px 0 0;
   font-size: 11px;
