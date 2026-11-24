@@ -1005,11 +1005,14 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
         guard lower.hasPrefix("http://") || lower.hasPrefix("https://") || lower.hasPrefix("mailto:") else {
             return
         }
-        if let url = URL(string: trimmed) {
-            NSWorkspace.shared.open(url)
-        } else if let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-                  let url = URL(string: encoded) {
-            NSWorkspace.shared.open(url)
+        let targetURL = URL(string: trimmed)
+            ?? trimmed.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed).flatMap { URL(string: $0) }
+        guard let url = targetURL else { return }
+        if !NSWorkspace.shared.open(url) {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            proc.arguments = [url.absoluteString]
+            try? proc.run()
         }
     }
 

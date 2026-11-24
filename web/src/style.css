@@ -3245,8 +3245,11 @@ body.meta-pressed .ProseMirror .emdi-wikilink:hover {
   border-radius: 5px;
 }
 
-.ProseMirror code.code-url-hover {
+.ProseMirror .code-url {
   cursor: pointer;
+}
+
+.ProseMirror .code-url:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
 }

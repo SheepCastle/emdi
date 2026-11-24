@@ -682,6 +682,53 @@ export const CalloutDecorator = Extension.create({
   },
 });
 
+// ── 5b. Inline Code URL Decorator (Safe ProseMirror decoration instead of DOM mutation) ──
+
+const INLINE_CODE_URL_RE = /^https?:\/\/[^\s<>()]+$/i;
+
+function buildInlineCodeUrlDecorations(doc: PMNode): DecorationSet {
+  const decorations: Decoration[] = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === 'codeBlock') return false;
+    if (!node.isText || !node.text) return true;
+    const hasCodeMark = node.marks.some((m) => m.type.name === 'code');
+    if (!hasCodeMark) return true;
+    const trimmed = node.text.trim();
+    if (!INLINE_CODE_URL_RE.test(trimmed)) return true;
+    decorations.push(
+      Decoration.inline(pos, pos + node.nodeSize, {
+        class: 'code-url',
+        'data-code-url': trimmed,
+      })
+    );
+    return true;
+  });
+  return DecorationSet.create(doc, decorations);
+}
+
+export const InlineCodeUrlDecorator = Extension.create({
+  name: 'inlineCodeUrlDecorator',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('emdiInlineCodeUrlDecorator'),
+        state: {
+          init: (_, state) => buildInlineCodeUrlDecorations(state.doc),
+          apply: (tr, oldSet, _, newState) => {
+            if (!tr.docChanged) return oldSet;
+            return buildInlineCodeUrlDecorations(newState.doc);
+          },
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state);
+          },
+        },
+      }),
+    ];
+  },
+});
+
 // ── 6. Search Highlight Extension (For Find & Replace in WYSIWYG) ──
 
 export interface SearchMatch {

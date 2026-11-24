@@ -26,6 +26,7 @@ import {
   EmdiHighlight,
   EmdiImage,
   EmdiWikiLink,
+  InlineCodeUrlDecorator,
   SearchHighlight,
   setExtensionProviders,
   setMermaidThemeMode,
@@ -320,6 +321,7 @@ const editor: Editor = new Editor({
     EmdiHighlight,
     EmdiWikiLink,
     CalloutDecorator,
+    InlineCodeUrlDecorator,
     SearchHighlight,
     EmdiImage.configure({
       inline: true,
@@ -2035,17 +2037,85 @@ lightboxCloseBtn.addEventListener('click', (event) => {
   closeLightbox();
 });
 
-// ── Link Hover Tooltip & Cmd+Click Navigation ──
+// ── Link Hover Tooltip & Click / Cmd+Click Navigation ──
 
 const EXTERNAL_URL_RE = /^https?:\/\/[^\s<>()]+$/i;
+const EXTERNAL_HREF_RE = /^(https?:|mailto:)/i;
+
+function resolveEventElement(target: EventTarget | null): HTMLElement | null {
+  if (target instanceof HTMLElement) return target;
+  if (target instanceof Node) return target.parentElement;
+  return null;
+}
 
 function getInlineCodeUrl(el: HTMLElement | null): { codeEl: HTMLElement; url: string } | null {
   if (!el) return null;
+  const decorated = el.closest('[data-code-url]') as HTMLElement | null;
+  if (decorated) {
+    const url = (decorated.getAttribute('data-code-url') ?? '').trim();
+    if (EXTERNAL_URL_RE.test(url)) {
+      const codeEl = (decorated.closest('code') as HTMLElement | null) ?? decorated;
+      return { codeEl, url };
+    }
+  }
   const codeEl = el.closest('code') as HTMLElement | null;
   if (!codeEl || codeEl.closest('pre')) return null;
   const text = (codeEl.textContent ?? '').trim();
   if (!EXTERNAL_URL_RE.test(text)) return null;
   return { codeEl, url: text };
+}
+
+type LinkAction =
+  | { kind: 'external'; url: string }
+  | { kind: 'anchor'; hash: string }
+  | { kind: 'internal'; target: string; isWiki: boolean };
+
+function resolveLinkAction(target: HTMLElement | null, modPressed: boolean): LinkAction | null {
+  if (!target) return null;
+
+  const wikiEl = target.closest('[data-wikilink="true"]') as HTMLElement | null;
+  if (wikiEl) {
+    if (!modPressed) return null;
+    const rawTarget = (wikiEl.getAttribute('data-wiki-target') ?? '').trim();
+    if (!rawTarget) return null;
+    if (rawTarget.startsWith('#')) {
+      return { kind: 'anchor', hash: rawTarget.slice(1) };
+    }
+    return { kind: 'internal', target: rawTarget, isWiki: true };
+  }
+
+  const anchor = target.closest('a') as HTMLAnchorElement | null;
+  if (anchor) {
+    const href = (anchor.getAttribute('href') ?? '').trim();
+    if (!href) return null;
+    const isExt = EXTERNAL_HREF_RE.test(href);
+    if (!isExt && !modPressed) return null;
+    if (href.startsWith('#')) {
+      return { kind: 'anchor', hash: decodeURIComponent(href.slice(1)) };
+    }
+    if (isExt) {
+      return { kind: 'external', url: href };
+    }
+    return { kind: 'internal', target: href, isWiki: false };
+  }
+
+  const codeUrl = getInlineCodeUrl(target);
+  if (codeUrl) {
+    return { kind: 'external', url: codeUrl.url };
+  }
+
+  return null;
+}
+
+function executeLinkAction(action: LinkAction) {
+  hideLinkTooltip();
+  if (action.kind === 'external') {
+    postNative({ type: 'openExternal', url: action.url });
+  } else if (action.kind === 'anchor') {
+    scrollToAnchor(action.hash);
+  } else {
+    postNative({ type: 'openLink', target: action.target, isWiki: action.isWiki, tabId: activeTabId ?? '' });
+  }
 }
 
 function hideLinkTooltip() {
@@ -2067,7 +2137,7 @@ function showLinkTooltip(text: string, anchorEl: HTMLElement, isExternal = false
 }
 
 richEditorEl.addEventListener('mouseover', (event) => {
-  const target = event.target as HTMLElement | null;
+  const target = resolveEventElement(event.target);
   if (!target) return;
 
   const wikiEl = target.closest('[data-wikilink="true"]') as HTMLElement | null;
@@ -2081,7 +2151,7 @@ richEditorEl.addEventListener('mouseover', (event) => {
   if (anchor) {
     const href = (anchor.getAttribute('href') ?? '').trim();
     if (href) {
-      const isExt = /^(https?:|mailto:)/i.test(href);
+      const isExt = EXTERNAL_HREF_RE.test(href);
       showLinkTooltip(href, anchor, isExt);
     }
     return;
@@ -2089,80 +2159,110 @@ richEditorEl.addEventListener('mouseover', (event) => {
 
   const codeUrl = getInlineCodeUrl(target);
   if (codeUrl) {
-    codeUrl.codeEl.classList.add('code-url-hover');
     showLinkTooltip(codeUrl.url, codeUrl.codeEl, true);
   }
 });
 
 richEditorEl.addEventListener('mouseout', (event) => {
-  const target = event.target as HTMLElement | null;
-  const codeUrl = getInlineCodeUrl(target);
-  if (codeUrl) {
-    codeUrl.codeEl.classList.remove('code-url-hover');
-    hideLinkTooltip();
-    return;
-  }
-  if (target?.closest('[data-wikilink="true"], a')) {
+  const target = resolveEventElement(event.target);
+  const related = resolveEventElement(event.relatedTarget);
+  if (
+    target?.closest('[data-wikilink="true"], a, [data-code-url], code') &&
+    !related?.closest('[data-wikilink="true"], a, [data-code-url], code')
+  ) {
     hideLinkTooltip();
   }
 });
 
-richEditorEl.addEventListener('click', (event) => {
-  const target = event.target as HTMLElement | null;
-  if (!target) return;
+interface PendingLinkGesture {
+  action: LinkAction;
+  startX: number;
+  startY: number;
+  modPressed: boolean;
+}
 
-  if (target.tagName === 'IMG') {
-    const img = target as HTMLImageElement;
-    if (img.src) {
-      event.preventDefault();
-      const caption = img.alt || img.getAttribute('data-raw-src') || '';
-      openLightbox(img.src, caption);
+let pendingLinkGesture: PendingLinkGesture | null = null;
+let lastHandledLinkAt = 0;
+
+richEditorEl.addEventListener(
+  'mousedown',
+  (event) => {
+    pendingLinkGesture = null;
+    if (event.button !== 0 || event.altKey) return;
+    const target = resolveEventElement(event.target);
+    if (!target || target.tagName === 'IMG') return;
+
+    const modPressed = isMacPlatform ? event.metaKey : event.ctrlKey;
+    const action = resolveLinkAction(target, modPressed);
+    if (!action) return;
+
+    pendingLinkGesture = {
+      action,
+      startX: event.clientX,
+      startY: event.clientY,
+      modPressed,
+    };
+  },
+  true
+);
+
+window.addEventListener(
+  'mouseup',
+  (event) => {
+    const gesture = pendingLinkGesture;
+    pendingLinkGesture = null;
+    if (!gesture || event.button !== 0 || event.altKey) return;
+    if (event.detail > 1) return;
+
+    const moved = Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY);
+    if (moved > 5) return;
+
+    const hasSelection = !(window.getSelection()?.isCollapsed ?? true);
+    if (hasSelection && !gesture.modPressed) return;
+
+    lastHandledLinkAt = performance.now();
+    executeLinkAction(gesture.action);
+  },
+  true
+);
+
+richEditorEl.addEventListener(
+  'click',
+  (event) => {
+    const target = resolveEventElement(event.target);
+    if (!target) return;
+
+    if (target.tagName === 'IMG') {
+      const img = target as HTMLImageElement;
+      if (img.src) {
+        event.preventDefault();
+        const caption = img.alt || img.getAttribute('data-raw-src') || '';
+        openLightbox(img.src, caption);
+      }
+      return;
     }
-    return;
-  }
 
-  const modPressed = isMacPlatform ? event.metaKey : event.ctrlKey;
-  const hasSelection = !(window.getSelection()?.isCollapsed ?? true);
-
-  const wikiEl = target.closest('[data-wikilink="true"]') as HTMLElement | null;
-  if (wikiEl && modPressed) {
-    event.preventDefault();
-    event.stopPropagation();
-    const rawTarget = wikiEl.getAttribute('data-wiki-target') ?? '';
-    if (rawTarget.startsWith('#')) {
-      scrollToAnchor(rawTarget.slice(1));
-    } else if (rawTarget) {
-      postNative({ type: 'openLink', target: rawTarget, isWiki: true, tabId: activeTabId ?? '' });
-    }
-    return;
-  }
-
-  const anchor = target.closest('a') as HTMLAnchorElement | null;
-  if (anchor) {
-    const href = anchor.getAttribute('href')?.trim() ?? '';
-    if (!href) return;
-    const isExt = /^(https?:|mailto:)/i.test(href);
-    if ((isExt && !event.altKey && !hasSelection) || modPressed) {
+    if (performance.now() - lastHandledLinkAt < 250) {
       event.preventDefault();
       event.stopPropagation();
-      if (href.startsWith('#')) {
-        scrollToAnchor(decodeURIComponent(href.slice(1)));
-      } else if (isExt) {
-        postNative({ type: 'openExternal', url: href });
-      } else {
-        postNative({ type: 'openLink', target: href, isWiki: false, tabId: activeTabId ?? '' });
-      }
+      return;
     }
-    return;
-  }
 
-  const codeUrl = getInlineCodeUrl(target);
-  if (codeUrl && !event.altKey && (!hasSelection || modPressed)) {
-    event.preventDefault();
-    event.stopPropagation();
-    postNative({ type: 'openExternal', url: codeUrl.url });
-  }
-});
+    if (event.altKey) return;
+    const modPressed = isMacPlatform ? event.metaKey : event.ctrlKey;
+    const hasSelection = !(window.getSelection()?.isCollapsed ?? true);
+    if (hasSelection && !modPressed) return;
+
+    const action = resolveLinkAction(target, modPressed);
+    if (action) {
+      event.preventDefault();
+      event.stopPropagation();
+      lastHandledLinkAt = performance.now();
+      executeLinkAction(action);
+    }
+  },
+  true
+);
 
 // ── UI Event Listeners ──
 
