@@ -36,6 +36,21 @@ final class UpdateManager {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? "1"
     }
 
+    var osInfo: String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        let ver = v.patchVersion > 0
+            ? "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+            : "\(v.majorVersion).\(v.minorVersion)"
+        #if arch(arm64)
+        let arch = "arm64"
+        #elseif arch(x86_64)
+        let arch = "x86_64"
+        #else
+        let arch = "unknown"
+        #endif
+        return "macOS \(ver) (\(arch))"
+    }
+
     private init() {}
 
     // MARK: - Lifecycle
@@ -58,6 +73,7 @@ final class UpdateManager {
             "status": status,
             "currentVersion": currentVersion,
             "currentBuild": currentBuild,
+            "osInfo": osInfo,
             "message": statusMessage,
             "bannerDismissed": bannerDismissed,
             "hasUpdate": latestRelease != nil && isVersion(latestRelease!.version, newerThan: currentVersion)

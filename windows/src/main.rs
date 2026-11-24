@@ -18,6 +18,10 @@ use tauri::{AppHandle, Manager, State};
 
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+fn os_info_string() -> String {
+    format!("Windows ({})", std::env::consts::ARCH)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AppSettings {
@@ -243,6 +247,7 @@ fn check_updates_async(app: AppHandle, state_arc: Arc<Mutex<AppState>>, interact
                 &json!({
                     "status": "checking",
                     "currentVersion": APP_VERSION,
+                    "osInfo": os_info_string(),
                     "hasUpdate": false,
                 }),
             );
@@ -276,6 +281,7 @@ fn check_updates_async(app: AppHandle, state_arc: Arc<Mutex<AppState>>, interact
                         &json!({
                             "status": if has_update { "available" } else { "upToDate" },
                             "currentVersion": APP_VERSION,
+                            "osInfo": os_info_string(),
                             "latestVersion": tag,
                             "releaseURL": html_url,
                             "hasUpdate": has_update,
@@ -292,6 +298,7 @@ fn check_updates_async(app: AppHandle, state_arc: Arc<Mutex<AppState>>, interact
                         &json!({
                             "status": "error",
                             "currentVersion": APP_VERSION,
+                            "osInfo": os_info_string(),
                             "hasUpdate": false,
                             "toast": "업데이트 정보를 확인하지 못했습니다",
                         }),
@@ -356,6 +363,7 @@ fn emdi_message(
                 &json!({
                     "status": "idle",
                     "currentVersion": APP_VERSION,
+                    "osInfo": os_info_string(),
                     "hasUpdate": false,
                 }),
             );
@@ -836,7 +844,14 @@ fn emdi_message(
 
         "openExternal" => {
             if let Some(url) = payload.get("url").and_then(|v| v.as_str()) {
-                let _ = open::that(url);
+                let trimmed = url.trim();
+                let lower = trimmed.to_ascii_lowercase();
+                if lower.starts_with("http://")
+                    || lower.starts_with("https://")
+                    || lower.starts_with("mailto:")
+                {
+                    let _ = open::that(trimmed);
+                }
             }
         }
 

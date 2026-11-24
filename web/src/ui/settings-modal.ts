@@ -13,6 +13,7 @@ export interface SettingsModalOptions {
   onCheckUpdates: () => void;
   onInstallUpdate: () => void;
   onOpenReleaseNotesExternal: () => void;
+  onOpenFeedback: () => void;
 }
 
 function escapeHtml(text: string): string {
@@ -98,6 +99,7 @@ export class SettingsModalController {
   private readonly btnRnCheck = document.getElementById('btn-rn-check') as HTMLButtonElement;
   private readonly btnRnInstall = document.getElementById('btn-rn-install') as HTMLButtonElement;
   private readonly btnRnGithub = document.getElementById('btn-rn-github') as HTMLButtonElement;
+  private readonly btnRnFeedback = document.getElementById('btn-rn-feedback') as HTMLButtonElement;
   private readonly rnBody = document.getElementById('rn-changelog-body') as HTMLDivElement;
 
   private activeTab: 'appearance' | 'shortcuts' | 'releases' = 'appearance';
@@ -367,5 +369,9 @@ export class SettingsModalController {
       this.opts.onInstallUpdate();
     });
     this.btnRnGithub.addEventListener('click', () => this.opts.onOpenReleaseNotesExternal());
+    this.btnRnFeedback.addEventListener('click', () => {
+      this.close();
+      this.opts.onOpenFeedback();
+    });
   }
 }

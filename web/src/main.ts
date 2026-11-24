@@ -35,6 +35,7 @@ import { FloatingToolsController } from './ui/floating-tools';
 import { FileTreeController } from './ui/file-tree';
 import { CommandPaletteController, type CommandItem } from './ui/command-palette';
 import { SettingsModalController } from './ui/settings-modal';
+import { FeedbackModalController } from './ui/feedback-modal';
 import { InspectorController } from './ui/inspector';
 import { configureDataviewBridge, handleDataviewResult } from './ui/dataview';
 import { applyThemePalette } from './ui/themes';
@@ -82,6 +83,7 @@ const btnUpdateNotes = document.getElementById('btn-update-notes') as HTMLButton
 const btnUpdateDismiss = document.getElementById('btn-update-dismiss') as HTMLButtonElement;
 const btnSidebarSettings = document.getElementById('btn-sidebar-settings') as HTMLButtonElement;
 const btnSidebarShortcuts = document.getElementById('btn-sidebar-shortcuts') as HTMLButtonElement;
+const btnSidebarFeedback = document.getElementById('btn-sidebar-feedback') as HTMLButtonElement;
 
 const editorScrollEl = document.getElementById('editor-scroll') as HTMLElement;
 const documentContainerEl = document.querySelector('.document-container') as HTMLElement;
@@ -1893,7 +1895,34 @@ const commandPalette = new CommandPaletteController({
       keywords: ['release', 'notes', 'changelog', 'version', '릴리즈', '변경이력'],
       run: () => settingsModal.open('releases'),
     },
+    {
+      id: 'open-feedback',
+      title: '피드백 보내기 (버그 제보 · 기능 제안)',
+      category: '앱',
+      keywords: ['feedback', 'bug', 'issue', 'feature', 'email', '피드백', '버그', '제보', '제안', '문의', '이메일'],
+      run: () => feedbackModal.open(),
+    },
   ],
+});
+
+function getCurrentAppVersion(): string {
+  const fromUpdate = latestUpdateState?.currentVersion?.trim();
+  if (fromUpdate) return fromUpdate;
+  const fromBtn = btnVersionCheck.textContent?.trim().replace(/^[vV]/, '') ?? '';
+  return fromBtn || 'unknown';
+}
+
+function getCurrentOsInfo(): string {
+  const fromNative = latestUpdateState?.osInfo?.trim();
+  if (fromNative) return fromNative;
+  return isMacPlatform ? 'macOS' : 'Windows';
+}
+
+const feedbackModal = new FeedbackModalController({
+  getAppVersion: getCurrentAppVersion,
+  getOsInfo: getCurrentOsInfo,
+  onOpenExternal: (url) => postNative({ type: 'openExternal', url }),
+  showToast,
 });
 
 const settingsModal = new SettingsModalController({
@@ -1929,6 +1958,9 @@ const settingsModal = new SettingsModalController({
   onOpenReleaseNotesExternal: () => {
     const url = latestUpdateState?.releaseURL || 'https://github.com/SheepCastle/emdi/releases';
     postNative({ type: 'openExternal', url });
+  },
+  onOpenFeedback: () => {
+    feedbackModal.open();
   },
 });
 
@@ -2294,6 +2326,10 @@ btnSidebarShortcuts.addEventListener('click', () => {
   settingsModal.open('shortcuts');
 });
 
+btnSidebarFeedback.addEventListener('click', () => {
+  feedbackModal.open();
+});
+
 btnUpdatePill.addEventListener('click', () => {
   postNative({ type: 'installUpdate' });
 });
@@ -2362,6 +2398,11 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (event.key === 'Escape') {
+    if (feedbackModal.isVisible) {
+      event.preventDefault();
+      feedbackModal.close();
+      return;
+    }
     if (settingsModal.isVisible) {
       event.preventDefault();
       settingsModal.close();
@@ -2660,17 +2701,26 @@ window.__emdi = {
   toggleFocusMode,
   openQuickOpen: () => {
     commandPalette.close();
+    feedbackModal.close();
     fileTree.openQuickOpen();
   },
   openCommandPalette: () => {
     fileTree.closeQuickOpen();
     settingsModal.close();
+    feedbackModal.close();
     commandPalette.open();
   },
   openSettings: (payload) => {
     fileTree.closeQuickOpen();
     commandPalette.close();
+    feedbackModal.close();
     settingsModal.open(payload?.tab ?? 'appearance');
+  },
+  openFeedback: () => {
+    fileTree.closeQuickOpen();
+    commandPalette.close();
+    settingsModal.close();
+    feedbackModal.open();
   },
   applySettings: (payload) => {
     if (payload.themeId || payload.accentId) {
@@ -2751,6 +2801,7 @@ window.__emdi = {
       fileTree.closeQuickOpen();
       commandPalette.close();
       settingsModal.close();
+      feedbackModal.close();
     }
   },
   onTreeChildrenLoaded: (payload) => fileTree.onChildrenLoaded(payload),

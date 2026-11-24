@@ -93,6 +93,13 @@
               </svg>
               <span>단축키</span>
             </button>
+            <button id="btn-sidebar-feedback" class="sidebar-footer-btn" type="button" title="버그 제보 및 기능 제안 보내기">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M2.6 3.8A1.4 1.4 0 0 1 4 2.4h8a1.4 1.4 0 0 1 1.4 1.4v5.8A1.4 1.4 0 0 1 12 11H6.6L3.6 13.4V11H4a1.4 1.4 0 0 1-1.4-1.4V3.8Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
+                <path d="M5.4 5.7h5.2M5.4 8h3.4" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
+              </svg>
+              <span>피드백</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -419,9 +426,86 @@
               <button id="btn-rn-install" class="pill-btn accent hidden" type="button">지금 업데이트</button>
               <button id="btn-rn-check" class="pill-btn" type="button">업데이트 확인</button>
               <button id="btn-rn-github" class="pill-btn" type="button">GitHub</button>
+              <button id="btn-rn-feedback" class="pill-btn" type="button">피드백</button>
             </div>
           </div>
           <div id="rn-changelog-body" class="rn-changelog-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 피드백 보내기 모달 -->
+    <div id="feedback-backdrop" class="quick-open-backdrop feedback-backdrop hidden">
+      <div class="feedback-modal" role="dialog" aria-modal="true" aria-label="피드백 보내기">
+        <div class="feedback-header">
+          <div class="feedback-title-wrap">
+            <span class="feedback-title">피드백 보내기</span>
+            <span id="feedback-env-badge" class="feedback-env-badge"></span>
+          </div>
+          <button id="btn-feedback-close" class="icon-btn sm" type="button" title="닫기 (ESC)">×</button>
+        </div>
+
+        <div class="feedback-body">
+          <p class="feedback-lead">
+            버그 제보나 기능 제안을 보내주시면 다음 버전에 적극 반영합니다.
+          </p>
+
+          <div class="feedback-options">
+            <button id="btn-feedback-bug" class="feedback-option-btn" type="button">
+              <span class="feedback-option-icon bug" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="9" r="3.4" stroke="currentColor" stroke-width="1.35" />
+                  <path d="M6.2 5.9a1.8 1.8 0 0 1 3.6 0M8 5.6V12.4M3.2 7.5h1.5M11.3 7.5h1.5M3.5 10.6l1.4-.7M12.5 10.6l-1.4-.7M4.4 4.3l1.2 1.1M11.6 4.3l-1.2 1.1" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span class="feedback-option-content">
+                <span class="feedback-option-head">
+                  <span class="feedback-option-title">버그 제보</span>
+                  <span class="feedback-option-tag">GitHub Issue</span>
+                </span>
+                <span class="feedback-option-desc">오류나 예상치 못한 동작을 GitHub 이슈 템플릿으로 제보합니다.</span>
+              </span>
+              <span class="feedback-option-arrow" aria-hidden="true">↗</span>
+            </button>
+
+            <button id="btn-feedback-feature" class="feedback-option-btn" type="button">
+              <span class="feedback-option-icon feature" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 2.4a4.1 4.1 0 0 0-2.4 7.4c.4.3.7.8.8 1.3h3.2c.1-.5.4-1 .8-1.3A4.1 4.1 0 0 0 8 2.4Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
+                  <path d="M6.4 13.2h3.2M6.9 11.1h2.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span class="feedback-option-content">
+                <span class="feedback-option-head">
+                  <span class="feedback-option-title">기능 · 개선 제안</span>
+                  <span class="feedback-option-tag">GitHub Issue</span>
+                </span>
+                <span class="feedback-option-desc">새로운 기능이나 사용성 개선 아이디어를 GitHub에 제안합니다.</span>
+              </span>
+              <span class="feedback-option-arrow" aria-hidden="true">↗</span>
+            </button>
+
+            <button id="btn-feedback-email" class="feedback-option-btn" type="button">
+              <span class="feedback-option-icon email" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                  <rect x="2.2" y="3.6" width="11.6" height="8.8" rx="1.6" stroke="currentColor" stroke-width="1.3" />
+                  <path d="M2.8 4.6 8 8.6l5.2-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+              <span class="feedback-option-content">
+                <span class="feedback-option-head">
+                  <span class="feedback-option-title">이메일로 보내기</span>
+                  <span class="feedback-option-tag subtle">GitHub 계정 불필요</span>
+                </span>
+                <span class="feedback-option-desc">dladidtjd@gmail.com — 기본 메일 앱에 버전·OS 템플릿을 채워 엽니다.</span>
+              </span>
+              <span class="feedback-option-arrow" aria-hidden="true">↗</span>
+            </button>
+          </div>
+
+          <p class="feedback-footnote">
+            엠디는 100% 로컬 우선 앱이며, 어떠한 사용 정보도 자동 수집하지 않습니다.
+          </p>
         </div>
       </div>
     </div>

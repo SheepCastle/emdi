@@ -118,6 +118,7 @@ export interface UpdateStatePayload {
   status: 'idle' | 'checking' | 'available' | 'upToDate' | 'downloading' | 'installing' | 'error';
   currentVersion: string;
   currentBuild?: string;
+  osInfo?: string;
   latestVersion?: string;
   tagName?: string;
   title?: string;
@@ -148,6 +149,7 @@ export interface EmdiWindowAPI {
   openQuickOpen: () => void;
   openCommandPalette: () => void;
   openSettings: (payload?: { tab?: 'appearance' | 'shortcuts' | 'releases' }) => void;
+  openFeedback: () => void;
   applySettings: (payload: Partial<AppSettingsPayload>) => void;
   setChangelog: (payload: { markdown: string }) => void;
   toggleWidthMode: () => void;

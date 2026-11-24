@@ -589,6 +589,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
     func openQuickOpen() { callWebAction("openQuickOpen()") }
     func openCommandPalette() { callWebAction("openCommandPalette()") }
     func openSettings(tab: String = "appearance") { callWebJS("openSettings", payload: ["tab": tab]) }
+    func openFeedback() { callWebAction("openFeedback()") }
     func applySettingsPayload(_ payload: [String: Any]) { callWebJS("applySettings", payload: payload) }
     func applyWindowTheme(mode: String, bgHex: String) {
         let isLight = (mode == "light")
@@ -997,14 +998,44 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
 
     // MARK: - Link Opening
 
+    private func openExternalURL(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let lower = trimmed.lowercased()
+        guard lower.hasPrefix("http://") || lower.hasPrefix("https://") || lower.hasPrefix("mailto:") else {
+            return
+        }
+        if let url = URL(string: trimmed) {
+            NSWorkspace.shared.open(url)
+        } else if let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                  let url = URL(string: encoded) {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+        if let url = navigationAction.request.url,
+           let scheme = url.scheme?.lowercased(),
+           (scheme == "http" || scheme == "https" || scheme == "mailto"),
+           navigationAction.targetFrame?.isMainFrame != false {
+            NSWorkspace.shared.open(url)
+            decisionHandler(.cancel)
+            return
+        }
+        decisionHandler(.allow)
+    }
+
     private func handleOpenLink(rawTarget: String, isWikiLink: Bool, tabId: String?) {
         let trimmed = rawTarget.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") || trimmed.hasPrefix("mailto:") {
-            if let url = URL(string: trimmed) {
-                NSWorkspace.shared.open(url)
-            }
+        let lower = trimmed.lowercased()
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") || lower.hasPrefix("mailto:") {
+            openExternalURL(trimmed)
             return
         }
 
@@ -1406,8 +1437,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
             }
 
         case "openExternal":
-            if let urlStr = body["url"] as? String, let url = URL(string: urlStr) {
-                NSWorkspace.shared.open(url)
+            if let urlStr = body["url"] as? String {
+                openExternalURL(urlStr)
             }
 
         case "startDrag":
@@ -1859,6 +1890,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func openFeedbackAction() {
+        if let active = activeController {
+            active.openFeedback()
+        } else {
+            openNewWindow(fileURL: nil)
+            activeController?.openFeedback()
+        }
+    }
+
     func requestInstallUpdate() {
         let dirtyTabs = controllers.flatMap { $0.tabs.filter { $0.isDirty } }
         if !dirtyTabs.isEmpty {
@@ -2003,6 +2043,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(withTitle: "엠디에 관하여", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(withTitle: "릴리즈 노트...", action: #selector(openReleaseNotesModalAction), keyEquivalent: "")
         appMenu.addItem(withTitle: "업데이트 확인...", action: #selector(checkForUpdatesAction), keyEquivalent: "")
+        appMenu.addItem(withTitle: "피드백 보내기...", action: #selector(openFeedbackAction), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "설정...", action: #selector(openSettingsAction), keyEquivalent: ",")
         appMenu.addItem(.separator())

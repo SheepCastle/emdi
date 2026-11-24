@@ -1,0 +1,52 @@
+name: 버그 제보
+description: 엠디(emdi) 사용 중 발생한 오류나 비정상 동작을 제보합니다.
+title: "[Bug] "
+labels: ["bug", "user-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        엠디(emdi)의 문제를 제보해 주셔서 감사합니다. 아래 항목을 채워 주시면 원인을 빠르게 파악하고 수정하는 데 큰 도움이 됩니다.
+  - type: input
+    id: version
+    attributes:
+      label: 앱 버전 (version)
+      description: 현재 사용 중인 엠디 버전 (앱 하단 상태바 또는 설정 > 릴리즈 노트에서 확인 가능)
+      placeholder: "예: 2.7.1"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: 운영체제 (os)
+      description: 사용 중인 OS 및 아키텍처 정보
+      placeholder: "예: macOS 15.3 (arm64) 또는 Windows 11 (x86_64)"
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: 증상 요약
+      description: 어떤 문제가 발생했는지 핵심 증상을 설명해 주세요.
+      placeholder: "예: 마크다운 파일에서 표를 편집한 뒤 저장하면 줄바꿈이 깨집니다."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 재현 단계
+      description: 문제를 다시 발생시킬 수 있는 순서를 단계별로 적어 주세요.
+      placeholder: |
+        1. 특정 .md 파일을 연다
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 동작
+      description: 원래 어떻게 동작해야 하는지 적어 주세요. (스크린샷이나 예시 마크다운이 있다면 함께 붙여넣어 주세요)
+      placeholder: "예: 표의 셀 내용이 유지된 채로 정상 저장되어야 합니다."
+    validations:
+      required: false

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 이메일로 피드백 보내기 (GitHub 계정 불필요)
+    url: mailto:dladidtjd@gmail.com?subject=%5Bemdi%20%ED%94%BC%EB%93%9C%EB%B0%B1%5D
+    about: GitHub 계정이 없거나 비공개로 피드백을 보내고 싶다면 dladidtjd@gmail.com 으로 이메일을 보내주세요.
