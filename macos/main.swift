@@ -156,8 +156,8 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
         window.collectionBehavior.insert(.fullScreenPrimary)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        let savedThemeId = UserDefaults.standard.string(forKey: "emdi.themeId") ?? "lavender"
-        let isLightInitial = (savedThemeId == "paper" || savedThemeId == "sepia")
+        let savedThemeId = UserDefaults.standard.string(forKey: "emdi.themeId") ?? "catppuccin-mocha"
+        let isLightInitial = (savedThemeId == "github-light" || savedThemeId == "catppuccin-latte")
         window.appearance = NSAppearance(named: isLightInitial ? .aqua : .darkAqua)
         window.backgroundColor = isLightInitial
             ? NSColor(srgbRed: 0.98, green: 0.98, blue: 0.976, alpha: 1.0)

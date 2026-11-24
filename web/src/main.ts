@@ -173,11 +173,43 @@ try {
   const initialAccent = window.localStorage.getItem('emdi:accentId') || 'auto';
   applyThemeAndNotify(initialTheme, initialAccent, false);
 } catch {
-  applyThemeAndNotify('lavender', 'auto', false);
+  applyThemeAndNotify('catppuccin-mocha', 'auto', false);
 }
 
 const isMacPlatform = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
 document.documentElement.dataset.platform = isMacPlatform ? 'macos' : 'windows';
+
+function formatPlatformShortcut(macText: string): string {
+  if (isMacPlatform) return macText;
+  return macText
+    .replace(/⌘/g, 'Ctrl+')
+    .replace(/⌥/g, 'Alt+')
+    .replace(/⇧/g, 'Shift+')
+    .replace(/↵/g, 'Enter');
+}
+
+function applyPlatformLabelsToDom() {
+  if (isMacPlatform) return;
+  document.querySelectorAll<HTMLElement>('[title]').forEach((el) => {
+    const title = el.getAttribute('title');
+    if (title && /[⌘⌥⇧↵]/.test(title)) {
+      el.setAttribute('title', formatPlatformShortcut(title));
+    }
+  });
+  document.querySelectorAll<HTMLElement>('.settings-row-title, .settings-row-desc').forEach((el) => {
+    if (el.textContent && /[⌘⌥⇧↵]/.test(el.textContent)) {
+      el.textContent = formatPlatformShortcut(el.textContent);
+    }
+  });
+  document
+    .querySelectorAll<HTMLElement>('[data-action="reveal"], [data-tree-action="reveal"]')
+    .forEach((el) => {
+      if (el.textContent?.includes('Finder')) {
+        el.textContent = el.textContent.replace(/Finder/g, '탐색기');
+      }
+    });
+}
+applyPlatformLabelsToDom();
 
 function postNative(payload: Record<string, unknown>) {
   if (window.webkit?.messageHandlers?.emdi) {
@@ -343,7 +375,9 @@ const editor: Editor = new Editor({
       },
     }),
     Placeholder.configure({
-      placeholder: '바로 작성을 시작하거나 파일을 열어보세요  ·  / 블록 삽입  ·  ⌘O 파일 열기  ·  ⌘⌥O 폴더 열기',
+      placeholder: formatPlatformShortcut(
+        '바로 작성을 시작하거나 파일을 열어보세요  ·  / 블록 삽입  ·  ⌘O 파일 열기  ·  ⌘⌥O 폴더 열기',
+      ),
     }),
     Typography,
     Markdown.configure({
@@ -1065,7 +1099,7 @@ function renderTabStrip() {
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'tab-close-btn';
-    closeBtn.title = '탭 닫기 (⌘W)';
+    closeBtn.title = formatPlatformShortcut('탭 닫기 (⌘W)');
     closeBtn.textContent = '×';
     closeBtn.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -1297,7 +1331,7 @@ function toggleFocusMode() {
     focusModeActive = true;
     fileTree.setSidebarOpen(false, false);
     applyWidthMode(true, false);
-    showToast('집중 모드 켜짐 (⌘⇧F)', 1600);
+    showToast(formatPlatformShortcut('집중 모드 켜짐 (⌘⇧F)'), 1600);
   } else {
     focusModeActive = false;
     fileTree.setSidebarOpen(preFocusSidebarOpen, false);
@@ -1802,10 +1836,10 @@ const commandPalette = new CommandPaletteController({
     },
     {
       id: 'reveal-finder',
-      title: 'Finder에서 현재 파일 보기',
+      title: isMacPlatform ? 'Finder에서 현재 파일 보기' : '탐색기에서 현재 파일 보기',
       category: '파일',
       shortcut: '⌘⇧R',
-      keywords: ['finder', 'reveal', '파인더'],
+      keywords: ['finder', 'explorer', 'reveal', '파인더', '탐색기'],
       run: () => postNative({ type: 'revealInFinder', tabId: activeTabId ?? '' }),
     },
     {
@@ -1902,7 +1936,7 @@ const commandPalette = new CommandPaletteController({
       keywords: ['feedback', 'bug', 'issue', 'feature', 'email', '피드백', '버그', '제보', '제안', '문의', '이메일'],
       run: () => feedbackModal.open(),
     },
-  ],
+  ].map((cmd) => (cmd.shortcut ? { ...cmd, shortcut: formatPlatformShortcut(cmd.shortcut) } : cmd)),
 });
 
 function getCurrentAppVersion(): string {
