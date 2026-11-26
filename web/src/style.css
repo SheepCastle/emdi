@@ -549,6 +549,7 @@ html[data-platform='windows'] .sidebar-header {
   z-index: 20;
   cursor: col-resize;
   flex-shrink: 0;
+  touch-action: none;
 }
 
 .sidebar-resizer::after {
@@ -568,6 +569,25 @@ html[data-platform='windows'] .sidebar-header {
 
 .sidebar-resizer.hidden {
   display: none;
+}
+
+body.resizing-panel {
+  cursor: col-resize !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+body.resizing-panel iframe,
+body.resizing-panel .preview-iframe {
+  pointer-events: none !important;
+}
+
+.panel-resize-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  cursor: col-resize;
+  background: transparent;
 }
 
 /* ── Right Main Column ── */

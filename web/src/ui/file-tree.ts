@@ -1,5 +1,6 @@
 import type { FileKind, TreeChildrenPayload, TreeNodeItem, TreeSearchPayload } from '../types';
 import { CHEVRON_SVG, getFileIconSVG } from './file-icons';
+import { bindPanelResizer } from './panel-resizer';
 
 export interface FileTreeOptions {
   postNative: (payload: Record<string, unknown>) => void;
@@ -792,38 +793,14 @@ export class FileTreeController {
   }
 
   private bindResizer() {
-    let dragging = false;
-    let startX = 0;
-    let startWidth = 252;
-
-    this.resizerEl.addEventListener('mousedown', (event) => {
-      event.preventDefault();
-      dragging = true;
-      startX = event.clientX;
-      startWidth = this.sidebarEl.getBoundingClientRect().width;
-      this.resizerEl.classList.add('dragging');
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    });
-
-    window.addEventListener('mousemove', (event) => {
-      if (!dragging) return;
-      const nextWidth = Math.min(440, Math.max(180, startWidth + (event.clientX - startX)));
-      this.sidebarEl.style.width = `${nextWidth}px`;
-    });
-
-    window.addEventListener('mouseup', () => {
-      if (!dragging) return;
-      dragging = false;
-      this.resizerEl.classList.remove('dragging');
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      const finalWidth = Math.round(this.sidebarEl.getBoundingClientRect().width);
-      try {
-        window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(finalWidth));
-      } catch {
-        // Ignore
-      }
+    bindPanelResizer({
+      resizerEl: this.resizerEl,
+      panelEl: this.sidebarEl,
+      direction: 'left',
+      minWidth: 180,
+      maxWidth: 440,
+      defaultWidth: 252,
+      storageKey: SIDEBAR_WIDTH_KEY,
     });
   }
 }

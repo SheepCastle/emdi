@@ -117,6 +117,13 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
     private var closedTabURLs: [URL] = []
     private var pendingSaveAsTabId: String?
     private var pendingCloseAfterSaveTabId: String?
+    private var activePanelResizeSessionId: Int?
+    private var panelResizeLocalMonitor: Any?
+    private var panelResizeGlobalMonitor: Any?
+    private var panelResizeWatchdogTimer: Timer?
+    private var panelResizeCursorPushed = false
+    private var lastPanelResizeSentX: Double?
+    private var lastPanelResizeDragAt: Date = .distantPast
 
     private static let maxTextReadBytes: UInt64 = 4 * 1024 * 1024
 
@@ -1086,10 +1093,138 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
     }
 
     private func stopAllMonitoring() {
+        stopNativePanelResize(notifyWeb: false)
         pollTimer?.invalidate()
         pollTimer = nil
         for tab in tabs {
             tab.stopDispatchSource()
+        }
+    }
+
+    // MARK: - Native Panel Resize Tracking (AppKit NSEvent)
+
+    private func currentWebViewClientX() -> Double? {
+        guard let window = self.window else { return nil }
+        let screenPoint = NSEvent.mouseLocation
+        let windowPoint = window.convertPoint(fromScreen: screenPoint)
+        let viewPoint = webView.convert(windowPoint, from: nil)
+        let zoom = max(0.1, Double(webView.pageZoom))
+        return Double(viewPoint.x) / zoom
+    }
+
+    private func startNativePanelResize(sessionId: Int) {
+        stopNativePanelResize(notifyWeb: false)
+
+        // Check real WindowServer button state immediately: if the user already released
+        // the primary button before IPC arrived (quick click/release), end at once.
+        let buttonDown = (NSEvent.pressedMouseButtons & 1) != 0
+        let currentType = NSApp.currentEvent?.type
+        let activeDragEvent = (currentType == .leftMouseDown || currentType == .leftMouseDragged)
+        guard buttonDown || activeDragEvent else {
+            webView.evaluateJavaScript("window.__emdiPanelResizeEnd?.(\(sessionId));", completionHandler: nil)
+            return
+        }
+
+        activePanelResizeSessionId = sessionId
+        lastPanelResizeSentX = nil
+        lastPanelResizeDragAt = Date()
+        if !panelResizeCursorPushed {
+            NSCursor.resizeLeftRight.push()
+            panelResizeCursorPushed = true
+        }
+
+        let emitCurrentX: () -> Void = { [weak self] in
+            guard let self = self, self.activePanelResizeSessionId == sessionId else { return }
+            guard let clientX = self.currentWebViewClientX() else { return }
+            if let last = self.lastPanelResizeSentX, abs(last - clientX) < 0.5 {
+                return
+            }
+            self.lastPanelResizeSentX = clientX
+            let rounded = String(format: "%.1f", clientX)
+            self.webView.evaluateJavaScript("window.__emdiPanelResizeMove?.(\(sessionId), \(rounded));", completionHandler: nil)
+        }
+
+        // Intercept drag/up at the NSApplication level BEFORE WKWebView or its PDF plugin sees them.
+        panelResizeLocalMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDragged, .leftMouseUp, .mouseMoved, .rightMouseDown, .otherMouseDown, .keyDown]
+        ) { [weak self] event in
+            guard let self = self, self.activePanelResizeSessionId == sessionId else {
+                return event
+            }
+            switch event.type {
+            case .leftMouseUp:
+                // Stop native tracking immediately, then pass leftMouseUp through so
+                // WKWebView cleanly clears its internal mouse-pressed state (and supports dblclick).
+                self.stopNativePanelResize(notifyWeb: true)
+                return event
+            case .leftMouseDragged:
+                self.lastPanelResizeDragAt = Date()
+                emitCurrentX()
+                return nil
+            case .mouseMoved:
+                // macOS only sends mouseMoved when no mouse button is held; never resize on hover!
+                self.stopNativePanelResize(notifyWeb: true)
+                return event
+            case .rightMouseDown, .otherMouseDown:
+                self.stopNativePanelResize(notifyWeb: true)
+                return event
+            case .keyDown:
+                if event.keyCode == 53 { // Escape
+                    self.stopNativePanelResize(notifyWeb: true)
+                    return nil
+                }
+                return event
+            default:
+                return event
+            }
+        }
+
+        // Catch leftMouseUp even if the cursor was dragged outside the app window.
+        panelResizeGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self = self, self.activePanelResizeSessionId == sessionId else { return }
+                self.stopNativePanelResize(notifyWeb: true)
+            }
+        }
+
+        // Hardware button watchdog: guarantees drag can never stay stuck after release.
+        let watchdog = Timer(timeInterval: 0.04, repeats: true) { [weak self] _ in
+            guard let self = self, self.activePanelResizeSessionId == sessionId else { return }
+            let stillPressed = (NSEvent.pressedMouseButtons & 1) != 0
+            if !stillPressed && Date().timeIntervalSince(self.lastPanelResizeDragAt) > 0.12 {
+                self.stopNativePanelResize(notifyWeb: true)
+            }
+        }
+        RunLoop.main.add(watchdog, forMode: .common)
+        panelResizeWatchdogTimer = watchdog
+    }
+
+    private func stopNativePanelResize(notifyWeb: Bool, onlySessionId: Int? = nil) {
+        if let expected = onlySessionId, activePanelResizeSessionId != expected {
+            return
+        }
+        let endedSessionId = activePanelResizeSessionId
+        activePanelResizeSessionId = nil
+        lastPanelResizeSentX = nil
+
+        if let monitor = panelResizeLocalMonitor {
+            NSEvent.removeMonitor(monitor)
+            panelResizeLocalMonitor = nil
+        }
+        if let monitor = panelResizeGlobalMonitor {
+            NSEvent.removeMonitor(monitor)
+            panelResizeGlobalMonitor = nil
+        }
+        panelResizeWatchdogTimer?.invalidate()
+        panelResizeWatchdogTimer = nil
+
+        if panelResizeCursorPushed {
+            NSCursor.pop()
+            panelResizeCursorPushed = false
+        }
+
+        if notifyWeb, let sid = endedSessionId {
+            webView.evaluateJavaScript("window.__emdiPanelResizeEnd?.(\(sid));", completionHandler: nil)
         }
     }
 
@@ -1449,6 +1584,15 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
                 window?.performDrag(with: event)
             }
 
+        case "startPanelResize":
+            if let sessionId = (body["sessionId"] as? NSNumber)?.intValue {
+                startNativePanelResize(sessionId: sessionId)
+            }
+
+        case "stopPanelResize":
+            let sessionId = (body["sessionId"] as? NSNumber)?.intValue
+            stopNativePanelResize(notifyWeb: false, onlySessionId: sessionId)
+
         case "openPeriodicNote":
             if let rawKind = body["kind"] as? String,
                let kind = PeriodicNoteKind(rawValue: rawKind) {
@@ -1533,6 +1677,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
     }
 
     func windowDidResignKey(_ notification: Notification) {
+        stopNativePanelResize(notifyWeb: true)
         pausePollTimer()
     }
 

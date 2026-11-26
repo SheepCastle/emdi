@@ -1,4 +1,5 @@
 import type { BacklinkItem, BacklinksPayload } from '../types';
+import { bindPanelResizer } from './panel-resizer';
 
 export type InspectorTab = 'outline' | 'tasks' | 'links';
 
@@ -377,37 +378,14 @@ export class InspectorController {
   }
 
   private bindResizer() {
-    let dragging = false;
-    let startX = 0;
-    let startW = 264;
-
-    this.resizerEl.addEventListener('mousedown', (event) => {
-      event.preventDefault();
-      dragging = true;
-      startX = event.clientX;
-      startW = this.panelEl.getBoundingClientRect().width;
-      this.resizerEl.classList.add('dragging');
-      document.body.style.cursor = 'col-resize';
-    });
-
-    window.addEventListener('mousemove', (event) => {
-      if (!dragging) return;
-      const delta = startX - event.clientX;
-      const next = Math.max(210, Math.min(440, Math.round(startW + delta)));
-      this.panelEl.style.width = `${next}px`;
-    });
-
-    window.addEventListener('mouseup', () => {
-      if (!dragging) return;
-      dragging = false;
-      this.resizerEl.classList.remove('dragging');
-      document.body.style.cursor = '';
-      const width = Math.round(this.panelEl.getBoundingClientRect().width);
-      try {
-        window.localStorage.setItem(INSPECTOR_WIDTH_KEY, String(width));
-      } catch {
-        // Ignore
-      }
+    bindPanelResizer({
+      resizerEl: this.resizerEl,
+      panelEl: this.panelEl,
+      direction: 'right',
+      minWidth: 210,
+      maxWidth: 440,
+      defaultWidth: 268,
+      storageKey: INSPECTOR_WIDTH_KEY,
     });
   }
 }
