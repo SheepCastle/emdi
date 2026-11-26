@@ -1,4 +1,4 @@
-# 엠디 (emdi) v2.7.1
+# 엠디 (emdi) v2.7.2
 
 **한국어** | [English](README.en.md)
 
