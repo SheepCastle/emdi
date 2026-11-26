@@ -1569,6 +1569,10 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate, WKScri
 
     func windowWillClose(_ notification: Notification) {
         stopAllMonitoring()
+        webView.stopLoading()
+        webView.navigationDelegate = nil
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "emdi")
+        webView.loadHTMLString("", baseURL: nil)
         (NSApp.delegate as? AppDelegate)?.removeController(self)
     }
 

@@ -798,6 +798,28 @@ function syncToolbarForTab(tab: TabDocState) {
   }
 }
 
+function releasePreviewStages(keep?: 'html' | 'pdf' | 'image') {
+  if (keep !== 'html') {
+    if (htmlPreviewFrame.hasAttribute('srcdoc')) {
+      htmlPreviewFrame.removeAttribute('srcdoc');
+    }
+    if (htmlPreviewFrame.getAttribute('src') && htmlPreviewFrame.getAttribute('src') !== 'about:blank') {
+      htmlPreviewFrame.src = 'about:blank';
+    }
+  }
+  if (keep !== 'pdf') {
+    if (pdfPreviewFrame.getAttribute('src') && pdfPreviewFrame.getAttribute('src') !== 'about:blank') {
+      pdfPreviewFrame.src = 'about:blank';
+    }
+  }
+  if (keep !== 'image') {
+    if (imageTabPreviewEl.hasAttribute('src')) {
+      imageTabPreviewEl.removeAttribute('src');
+      imageTabPreviewEl.alt = '';
+    }
+  }
+}
+
 function mountTabToView(tab: TabDocState, anchor?: string, preserveScroll = false) {
   const savedScroll = preserveScroll ? editorScrollEl.scrollTop : tab.scrollTop;
   imageReloadNonce += 1;
@@ -820,9 +842,11 @@ function mountTabToView(tab: TabDocState, anchor?: string, preserveScroll = fals
   frontmatterCard.classList.add('hidden');
 
   if (tab.fileKind === 'pdf') {
+    releasePreviewStages('pdf');
     pdfStageEl.classList.remove('hidden');
     pdfPreviewFrame.src = withCacheBust(tab.previewURL);
   } else if (tab.fileKind === 'image') {
+    releasePreviewStages('image');
     imageStageEl.classList.remove('hidden');
     imageZoomPct = null;
     applyImageZoom();
@@ -830,6 +854,7 @@ function mountTabToView(tab: TabDocState, anchor?: string, preserveScroll = fals
     imageTabPreviewEl.src = withCacheBust(tab.previewURL);
     imageTabPreviewEl.alt = tab.fileName;
   } else if (tab.fileKind === 'html' && !tab.isSourceMode) {
+    releasePreviewStages('html');
     htmlStageEl.classList.remove('hidden');
     if (tab.isDirty) {
       htmlPreviewFrame.removeAttribute('src');
@@ -839,6 +864,7 @@ function mountTabToView(tab: TabDocState, anchor?: string, preserveScroll = fals
       htmlPreviewFrame.src = withCacheBust(tab.previewURL);
     }
   } else if (tab.fileKind === 'html' || tab.fileKind === 'code' || tab.fileKind === 'text') {
+    releasePreviewStages();
     editorScrollEl.classList.remove('hidden');
     if (tab.isSourceMode) {
       sourceEditorEl.classList.remove('hidden');
@@ -853,6 +879,7 @@ function mountTabToView(tab: TabDocState, anchor?: string, preserveScroll = fals
     }
   } else {
     // Markdown tab
+    releasePreviewStages();
     editorScrollEl.classList.remove('hidden');
     if (tab.isSourceMode) {
       sourceEditorEl.classList.remove('hidden');
@@ -995,6 +1022,10 @@ function closeTabFromNative(payload: { tabId: string; nextActiveTabId?: string }
 
   if (tabs.length === 0) {
     activeTabId = null;
+    releasePreviewStages();
+    htmlStageEl.classList.add('hidden');
+    pdfStageEl.classList.add('hidden');
+    imageStageEl.classList.add('hidden');
     renderTabStrip();
     return;
   }
