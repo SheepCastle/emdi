@@ -2,6 +2,12 @@
 
 엠디(emdi)의 모든 주요 변경 이력을 Semantic Versioning 규칙에 따라 기록합니다.
 
+## [2.7.3] - 2026-11-27
+
+### Fixed
+- **비활성 프리뷰 메모리 회수 및 macOS 창 순환 참조 해제 (`#2`)**: HTML·PDF·이미지 탭에서 다른 탭으로 전환하거나 마지막 탭을 닫을 때 비활성 프리뷰 스테이지를 즉시 언로드해 WebKit/WebView2 메모리가 누적되지 않도록 개선하고, macOS 창 닫기 시 `WKUserContentController` 스크립트 핸들러 순환 참조를 해제했습니다.
+- **Windows 단축키·탐색기 문구 정규화 및 macOS 초기 라이트 테마 불일치 수정 (`#1`)**: Windows 환경에서 커맨드 팔레트·툴팁·빈 화면 버튼의 단축키 기호(`Ctrl+`/`Alt+`/`Shift+`/`Enter`)와 `탐색기에서 보기` 문구를 정규화하고, macOS 라이트 테마(`github-light`, `catppuccin-latte`) 기동 시 다크 배경이 깜빡이던 초기 판별 오류를 수정했습니다.
+
 ## [2.7.2] - 2026-11-26
 
 ### Added

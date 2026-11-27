@@ -1,6 +1,6 @@
 [package]
 name = "emdi-windows"
-version = "2.7.2"
+version = "2.7.3"
 description = "엠디 (emdi) — Lightweight native Markdown & vault editor for Windows"
 authors = ["Sean Lim"]
 license = "MIT"
