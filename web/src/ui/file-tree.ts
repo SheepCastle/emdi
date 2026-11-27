@@ -341,18 +341,19 @@ export class FileTreeController {
       const actions = document.createElement('div');
       actions.className = 'sidebar-empty-actions';
 
+      const isMac = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
       const openFolderBtn = document.createElement('button');
       openFolderBtn.type = 'button';
       openFolderBtn.className = 'sidebar-empty-btn primary';
       openFolderBtn.textContent = '폴더 열기';
-      openFolderBtn.title = '폴더 열기 (⌘⌥O)';
+      openFolderBtn.title = isMac ? '폴더 열기 (⌘⌥O)' : '폴더 열기 (Ctrl+Alt+O)';
       openFolderBtn.addEventListener('click', () => this.opts.postNative({ type: 'openFolder' }));
 
       const openFileBtn = document.createElement('button');
       openFileBtn.type = 'button';
       openFileBtn.className = 'sidebar-empty-btn';
       openFileBtn.textContent = '파일 열기';
-      openFileBtn.title = '파일 열기 (⌘O)';
+      openFileBtn.title = isMac ? '파일 열기 (⌘O)' : '파일 열기 (Ctrl+O)';
       openFileBtn.addEventListener('click', () => this.opts.postNative({ type: 'openFile' }));
 
       actions.appendChild(openFolderBtn);
